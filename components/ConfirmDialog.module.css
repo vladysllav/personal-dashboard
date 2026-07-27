@@ -1,0 +1,69 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast);
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  background: oklch(0.1 0.006 104 / 0.62);
+  animation: fade var(--dur-fast) var(--ease-out-quart);
+}
+
+.panel {
+  width: min(420px, 100%);
+  padding: var(--space-lg);
+  background: var(--surface-2);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px oklch(0.08 0.006 104 / 0.55);
+  animation: rise var(--dur-base) var(--ease-out-expo);
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.body {
+  margin-top: var(--space-xs);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  text-wrap: pretty;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+}
+
+/* The one place a warm red is licensed: an irreversible delete. */
+.danger {
+  background: oklch(0.62 0.19 25);
+  color: oklch(0.98 0.01 25);
+  font-weight: var(--weight-semibold);
+}
+
+.danger:hover {
+  background: oklch(0.66 0.2 25);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .panel {
+    animation: none;
+  }
+}

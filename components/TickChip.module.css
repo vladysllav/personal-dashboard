@@ -1,0 +1,85 @@
+/*
+ * One vocabulary for "a thing you tick off": today's habits, and a goal's
+ * milestones. Same shape, same states, two sizes.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  text-align: left;
+  transition:
+    background-color var(--dur-fast) var(--ease-out-quart),
+    border-color var(--dur-fast) var(--ease-out-quart),
+    color var(--dur-fast) var(--ease-out-quart),
+    transform var(--dur-fast) var(--ease-out-quart);
+}
+
+.md {
+  min-height: 44px;
+  padding: 0 var(--space-md) 0 7px;
+  font-size: var(--text-sm);
+}
+
+.sm {
+  min-height: 30px;
+  padding: 0 var(--space-sm) 0 6px;
+  font-size: var(--text-xs);
+  gap: 5px;
+  width: auto;
+}
+
+.chip:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.chip:active {
+  transform: scale(0.985);
+}
+
+/* Done uses a tint plus a solid accent mark rather than an accent fill: the
+   accent stays scarce, and the mark still reads instantly. */
+.chip[data-done="true"] {
+  background: var(--accent-quiet);
+  border-color: transparent;
+  color: var(--ink);
+}
+
+.dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  color: var(--on-accent);
+  transition:
+    background-color var(--dur-fast) var(--ease-out-quart),
+    border-color var(--dur-fast) var(--ease-out-quart);
+}
+
+.md .dot {
+  width: 28px;
+  height: 28px;
+}
+
+.sm .dot {
+  width: 16px;
+  height: 16px;
+}
+
+.chip[data-done="true"] .dot {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,147 @@
+/*
+ * The capture surface. It sits at the top and gets the most generous
+ * treatment on the screen, because logging is the most-repeated action and
+ * every interaction saved here compounds across every day of use.
+ */
+.band {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+  gap: var(--space-xl);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.pane {
+  min-width: 0;
+}
+
+.paneHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.paneTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--ink-2);
+}
+
+.paneMeta {
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+
+.chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: var(--space-xs);
+  list-style: none;
+  padding: 0;
+}
+
+/* Divider between the two panes, not a border on a box. */
+.log {
+  border-left: 1px solid var(--line);
+  padding-left: var(--space-xl);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  align-items: flex-end;
+}
+
+.inlineGrow {
+  flex: 1;
+  min-width: 120px;
+}
+
+.dateField {
+  flex: 0 0 auto;
+}
+
+.dateField .input {
+  width: auto;
+}
+
+.suffix {
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+  padding-bottom: 9px;
+  white-space: nowrap;
+}
+
+.nextMilestone {
+  padding: var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.receipt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.receiptText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+
+.alert {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  grid-column: 1 / -1;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: var(--text-sm);
+}
+
+.alertMark {
+  flex: none;
+  font-weight: var(--weight-semibold);
+}
+
+@media (max-width: 900px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+
+  .log {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: var(--space-lg);
+  }
+}
