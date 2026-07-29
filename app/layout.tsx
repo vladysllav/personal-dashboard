@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Sans_3 } from "next/font/google";
-import { AppShell } from "@/components/AppShell";
-import { StoreProvider } from "@/lib/store";
 import "./globals.css";
 
 /*
@@ -25,6 +23,11 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+/*
+ * Deliberately thin. The store and the app chrome belong to signed-in routes
+ * only, so they live in `(app)/layout.tsx` — the sign-in screen renders inside
+ * this shell without a nav bar or a dashboard to hydrate.
+ */
 export default function RootLayout({
   children,
 }: {
@@ -32,11 +35,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={sans.variable}>
-      <body>
-        <StoreProvider>
-          <AppShell>{children}</AppShell>
-        </StoreProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

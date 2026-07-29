@@ -33,6 +33,11 @@
   letter-spacing: -0.02em;
 }
 
+/* Pushes the account slot to the foot of the rail, away from the sections. */
+.railEnd {
+  margin-top: auto;
+}
+
 .item {
   display: flex;
   flex-direction: column;

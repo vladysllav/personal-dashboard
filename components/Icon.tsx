@@ -16,7 +16,8 @@ export type IconName =
   | "bars"
   | "ring"
   | "flame"
-  | "trophy";
+  | "trophy"
+  | "signOut";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   today: (
@@ -71,6 +72,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M6 3.5h8v3.5a4 4 0 0 1-8 0V3.5Z" />
       <path d="M6 4.5H3.5v1a2.5 2.5 0 0 0 2.5 2.5M14 4.5h2.5v1a2.5 2.5 0 0 1-2.5 2.5" />
       <path d="M10 11v2.5M7 17h6M8 17c0-1.5.7-2.5 2-2.5s2 1 2 2.5" />
+    </>
+  ),
+  signOut: (
+    <>
+      <path d="M12 6.25V4.75a1.25 1.25 0 0 0-1.25-1.25h-5.5A1.25 1.25 0 0 0 4 4.75v10.5a1.25 1.25 0 0 0 1.25 1.25h5.5A1.25 1.25 0 0 0 12 15.25v-1.5" />
+      <path d="M8.75 10h7.75M14 7.5 16.5 10 14 12.5" />
     </>
   ),
 };

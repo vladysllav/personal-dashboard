@@ -12,7 +12,15 @@ const NAV: Array<{ href: string; label: string; icon: IconName }> = [
   { href: "/habits", label: "Habits", icon: "grid" },
 ];
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  account,
+}: {
+  children: ReactNode;
+  /** Rendered at the foot of the rail. A slot because signing out is a server
+   *  action, and this component is client-side. */
+  account?: ReactNode;
+}) {
   const pathname = usePathname();
 
   return (
@@ -39,6 +47,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
+
+        {account ? <div className={styles.railEnd}>{account}</div> : null}
       </nav>
 
       <main id="main" className={styles.main}>

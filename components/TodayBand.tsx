@@ -11,7 +11,7 @@ import { TickChip } from "./TickChip";
 import styles from "./TodayBand.module.css";
 
 export function TodayBand({ today }: { today: string }) {
-  const { state, dispatch, storageError } = useStore();
+  const { state, dispatch, syncError } = useStore();
   const marked = state.habits.filter((h) => h.marks.includes(today)).length;
 
   return (
@@ -20,12 +20,12 @@ export function TodayBand({ today }: { today: string }) {
         Log today
       </h2>
 
-      {storageError && (
+      {syncError && (
         <p className={styles.alert} role="alert">
           <span className={styles.alertMark} aria-hidden="true">
             !
           </span>
-          {storageError}
+          {syncError}
         </p>
       )}
 

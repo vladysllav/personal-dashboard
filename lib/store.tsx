@@ -4,14 +4,15 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { STORAGE_KEY } from "./constants";
 import { addDays, todayKey, weekdayIndex } from "./dates";
+import { applyAction } from "./server/actions";
+import type { Intent, SyncAction } from "./sync";
 import type {
   DashboardState,
   Goal,
@@ -22,42 +23,11 @@ import type {
   StepUnit,
 } from "./types";
 
+export type { GoalPatch } from "./sync";
+
 const DEFAULT_PREFS: Preferences = { goalView: "bar" };
-const EMPTY: DashboardState = { goals: [], habits: [], prefs: DEFAULT_PREFS };
 
-/** Fields a user may change after creation. Identity, entries and marks are never patched here. */
-export type GoalPatch = Partial<
-  Pick<
-    Goal,
-    | "name"
-    | "kind"
-    | "unit"
-    | "pointA"
-    | "pointB"
-    | "stepUnit"
-    | "totalSteps"
-    | "startDate"
-    | "milestones"
-  >
->;
-
-type Action =
-  | { type: "hydrate"; state: DashboardState }
-  | { type: "replace"; state: DashboardState }
-  | { type: "addGoal"; goal: Goal }
-  | { type: "editGoal"; goalId: string; patch: GoalPatch }
-  | { type: "logGoal"; goalId: string; value: number; at?: string }
-  | { type: "editEntry"; goalId: string; entryId: string; value: number; at: string }
-  | { type: "removeEntry"; goalId: string; entryId: string }
-  | { type: "undoLastEntry"; goalId: string }
-  | { type: "toggleMilestone"; goalId: string; milestoneId: string }
-  | { type: "removeGoal"; goalId: string }
-  | { type: "addHabit"; habit: Habit }
-  | { type: "seedSampleHabits" }
-  | { type: "editHabit"; habitId: string; name: string; weeklyTarget: number }
-  | { type: "toggleHabit"; habitId: string; dateKey: string }
-  | { type: "removeHabit"; habitId: string }
-  | { type: "setGoalView"; view: GoalView };
+type Action = SyncAction | { type: "hydrate"; state: DashboardState };
 
 function reducer(state: DashboardState, action: Action): DashboardState {
   switch (action.type) {
@@ -76,22 +46,12 @@ function reducer(state: DashboardState, action: Action): DashboardState {
         ),
       };
 
-    case "logGoal":
+    case "addEntry":
       return {
         ...state,
         goals: state.goals.map((g) =>
           g.id === action.goalId
-            ? {
-                ...g,
-                entries: [
-                  ...g.entries,
-                  {
-                    id: newId(),
-                    at: action.at ?? new Date().toISOString(),
-                    value: action.value,
-                  },
-                ],
-              }
+            ? { ...g, entries: [...g.entries, action.entry] }
             : g,
         ),
       };
@@ -123,15 +83,7 @@ function reducer(state: DashboardState, action: Action): DashboardState {
         ),
       };
 
-    case "undoLastEntry":
-      return {
-        ...state,
-        goals: state.goals.map((g) =>
-          g.id === action.goalId ? { ...g, entries: g.entries.slice(0, -1) } : g,
-        ),
-      };
-
-    case "toggleMilestone":
+    case "setMilestone":
       return {
         ...state,
         goals: state.goals.map((g) =>
@@ -139,7 +91,7 @@ function reducer(state: DashboardState, action: Action): DashboardState {
             ? {
                 ...g,
                 milestones: g.milestones.map((m) =>
-                  m.id === action.milestoneId ? { ...m, done: !m.done } : m,
+                  m.id === action.milestoneId ? { ...m, done: action.done } : m,
                 ),
               }
             : g,
@@ -149,15 +101,8 @@ function reducer(state: DashboardState, action: Action): DashboardState {
     case "removeGoal":
       return { ...state, goals: state.goals.filter((g) => g.id !== action.goalId) };
 
-    case "addHabit":
-      return { ...state, habits: [...state.habits, action.habit] };
-
-    case "seedSampleHabits":
-      // Appends the sample habits without disturbing goals or any existing ones.
-      return {
-        ...state,
-        habits: [...state.habits, ...buildSampleHabits(todayKey())],
-      };
+    case "addHabits":
+      return { ...state, habits: [...state.habits, ...action.habits] };
 
     case "editHabit":
       return {
@@ -169,17 +114,15 @@ function reducer(state: DashboardState, action: Action): DashboardState {
         ),
       };
 
-    case "toggleHabit":
+    case "setHabitMark":
       return {
         ...state,
         habits: state.habits.map((h) => {
           if (h.id !== action.habitId) return h;
-          const has = h.marks.includes(action.dateKey);
+          const without = h.marks.filter((m) => m !== action.dateKey);
           return {
             ...h,
-            marks: has
-              ? h.marks.filter((m) => m !== action.dateKey)
-              : [...h.marks, action.dateKey].sort(),
+            marks: action.done ? [...without, action.dateKey].sort() : without,
           };
         }),
       };
@@ -195,6 +138,69 @@ function reducer(state: DashboardState, action: Action): DashboardState {
   }
 }
 
+/**
+ * Turns a component's intent into the exact action that both the reducer and
+ * the server will apply.
+ *
+ * This is where every id, timestamp and toggle gets pinned down. A toggle
+ * resolved on the server would race two devices into flipping each other's
+ * work; resolved here, the action states the outcome it wants and replaying it
+ * is harmless. Returns null when there is nothing to do.
+ */
+function seal(intent: Intent, state: DashboardState): SyncAction | null {
+  switch (intent.type) {
+    case "logGoal":
+      return {
+        type: "addEntry",
+        goalId: intent.goalId,
+        entry: {
+          id: newId(),
+          at: intent.at ?? new Date().toISOString(),
+          value: intent.value,
+        },
+      };
+
+    case "undoLastEntry": {
+      const goal = state.goals.find((g) => g.id === intent.goalId);
+      const last = goal?.entries.at(-1);
+      if (!last) return null;
+      return { type: "removeEntry", goalId: intent.goalId, entryId: last.id };
+    }
+
+    case "toggleMilestone": {
+      const goal = state.goals.find((g) => g.id === intent.goalId);
+      const milestone = goal?.milestones.find((m) => m.id === intent.milestoneId);
+      if (!milestone) return null;
+      return {
+        type: "setMilestone",
+        goalId: intent.goalId,
+        milestoneId: intent.milestoneId,
+        done: !milestone.done,
+      };
+    }
+
+    case "toggleHabit": {
+      const habit = state.habits.find((h) => h.id === intent.habitId);
+      if (!habit) return null;
+      return {
+        type: "setHabitMark",
+        habitId: intent.habitId,
+        dateKey: intent.dateKey,
+        done: !habit.marks.includes(intent.dateKey),
+      };
+    }
+
+    case "seedSampleHabits":
+      return { type: "addHabits", habits: buildSampleHabits(todayKey()) };
+
+    case "addHabit":
+      return { type: "addHabits", habits: [intent.habit] };
+
+    default:
+      return intent;
+  }
+}
+
 export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
@@ -204,51 +210,59 @@ export function newId(): string {
 
 type StoreValue = {
   state: DashboardState;
-  dispatch: (action: Action) => void;
-  /** False until localStorage has been read. Guards against hydration mismatch. */
+  dispatch: (intent: Intent) => void;
+  /** Kept for call sites; the server renders with real data, so it is never false. */
   ready: boolean;
-  /** Set when persistence fails (private mode, quota). Surfaced inline, not swallowed. */
-  storageError: string | null;
+  /** Set when a write fails to reach the server. Surfaced inline, not swallowed. */
+  syncError: string | null;
   loadSample: () => void;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, EMPTY);
-  const [ready, setReady] = useState(false);
-  const [storageError, setStorageError] = useState<string | null>(null);
+export function StoreProvider({
+  initialState,
+  children,
+}: {
+  initialState: DashboardState;
+  children: ReactNode;
+}) {
+  const [state, rawDispatch] = useReducer(reducer, initialState);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) dispatch({ type: "hydrate", state: parse(raw) });
-    } catch {
-      setStorageError(
-        "Couldn't read saved data. Anything you enter now may not persist.",
-      );
-    } finally {
-      setReady(true);
-    }
+  // A synchronous mirror of `state`. Sealing needs the current data, and two
+  // dispatches in one tick would both read a stale `state` from the closure.
+  const stateRef = useRef(initialState);
+
+  // Writes go out one at a time. Order matters — creating a goal must land
+  // before an entry logged against it — and at personal scale a promise chain
+  // is the whole of the machinery required.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+
+  const dispatch = useCallback((intent: Intent) => {
+    const action = seal(intent, stateRef.current);
+    if (!action) return;
+
+    stateRef.current = reducer(stateRef.current, action);
+    rawDispatch(action);
+
+    queue.current = queue.current
+      .then(() => applyAction(action))
+      .then(() => setSyncError(null))
+      .catch(() => {
+        setSyncError(
+          "Couldn't reach the server. Your last change is on screen but not saved.",
+        );
+      });
   }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      setStorageError(null);
-    } catch {
-      setStorageError("Couldn't save. Your last change is on screen but not stored.");
-    }
-  }, [state, ready]);
 
   const loadSample = useCallback(() => {
     dispatch({ type: "replace", state: buildSample() });
-  }, []);
+  }, [dispatch]);
 
   const value = useMemo(
-    () => ({ state, dispatch, ready, storageError, loadSample }),
-    [state, ready, storageError, loadSample],
+    () => ({ state, dispatch, ready: true, syncError, loadSample }),
+    [state, dispatch, syncError, loadSample],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -258,20 +272,6 @@ export function useStore(): StoreValue {
   const ctx = useContext(StoreContext);
   if (!ctx) throw new Error("useStore must be used inside StoreProvider");
   return ctx;
-}
-
-function parse(raw: string): DashboardState {
-  const parsed: unknown = JSON.parse(raw);
-  if (!parsed || typeof parsed !== "object") return EMPTY;
-  const candidate = parsed as Partial<DashboardState>;
-  const view = candidate.prefs?.goalView;
-  return {
-    goals: Array.isArray(candidate.goals) ? candidate.goals : [],
-    habits: Array.isArray(candidate.habits) ? candidate.habits : [],
-    // Absent before this feature shipped, so fall back to the default rather
-    // than trusting the stored shape.
-    prefs: { goalView: view === "ring" ? "ring" : "bar" },
-  };
 }
 
 /* ---------- Sample data ---------- */
