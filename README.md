@@ -3,12 +3,12 @@
 Goals and habits, kept by hand — on every device you use.
 
 A single-user Next.js dashboard: goals with pace tracking, habits with streaks
-and a consistency grid. Data lives in Postgres behind a GitHub sign-in, so the
+and a consistency grid. Data lives in Postgres behind a Google sign-in, so the
 same dashboard follows you from laptop to phone.
 
 - **Framework** — Next.js 15 (App Router, React 19)
 - **Database** — Neon (serverless Postgres) via Drizzle ORM
-- **Auth** — Auth.js v5, GitHub OAuth, restricted to an allowlist
+- **Auth** — Auth.js v5, Google OAuth, restricted to an allowlist
 - **Styling** — CSS Modules and design tokens (see `DESIGN.md`)
 
 ---
@@ -34,25 +34,37 @@ trusts an id from the payload without first proving ownership
 
 ## Setup
 
-You need a [Neon](https://neon.tech) account, a GitHub OAuth app, and Node 22+.
+You need a [Neon](https://neon.tech) account, a Google OAuth client, and
+Node 22+.
 
 ### 1. Database
 
 Create a Neon project, then copy the **pooled** connection string (the host
 containing `-pooler`) from the Neon dashboard.
 
-### 2. GitHub OAuth app
+### 2. Google OAuth client
 
-**Settings → Developer settings → OAuth Apps → New OAuth App**
+In the [Google Cloud console](https://console.cloud.google.com), create (or
+pick) a project, then:
+
+1. **APIs & Services → OAuth consent screen** — user type **External**, fill in
+   the app name and your support/contact email. Leave it in **Testing** and add
+   your own Google address under **Test users**: a personal dashboard has no
+   reason to go through Google's publication review, and an app in testing
+   admits only the test users you list.
+2. **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   application type **Web application**:
 
 | Field | Value |
 | --- | --- |
-| Homepage URL | `http://localhost:3000` |
-| Authorization callback URL | `http://localhost:3000/api/auth/callback/github` |
+| Authorised JavaScript origin | `http://localhost:3000` |
+| Authorised redirect URI | `http://localhost:3000/api/auth/callback/google` |
 
-Generate a client secret and keep both values to hand. (After deploying, either
-update these to your production URL or create a second app for it — an OAuth app
-accepts only one callback URL.)
+Copy the client id and client secret. Unlike a GitHub OAuth app, one Google
+client accepts several redirect URIs — after deploying, add the production one
+to the same client rather than creating a second.
+
+No API scopes need enabling: sign-in uses the default `openid email profile`.
 
 ### 3. Environment
 
@@ -67,11 +79,11 @@ Fill in the rest:
 | --- | --- |
 | `DATABASE_URL` | Neon pooled connection string |
 | `AUTH_SECRET` | Session cookie signing key |
-| `AUTH_GITHUB_ID` | OAuth app client id |
-| `AUTH_GITHUB_SECRET` | OAuth app client secret |
-| `ALLOWED_GITHUB_LOGINS` | Comma-separated GitHub logins allowed in |
+| `AUTH_GOOGLE_ID` | OAuth client id |
+| `AUTH_GOOGLE_SECRET` | OAuth client secret |
+| `ALLOWED_GOOGLE_EMAILS` | Comma-separated Google emails allowed in |
 
-`ALLOWED_GITHUB_LOGINS` **fails closed**: leave it empty and nobody can sign in,
+`ALLOWED_GOOGLE_EMAILS` **fails closed**: leave it empty and nobody can sign in,
 including you. That is deliberate — a misconfigured deploy locks the door rather
 than leaving a personal dashboard writable by anyone who finds the URL.
 
@@ -90,8 +102,9 @@ npm run dev
 1. Import the repository at [vercel.com/new](https://vercel.com/new).
 2. Add all five environment variables from `.env.local` to the project.
 3. Deploy.
-4. Update the GitHub OAuth app's homepage and callback URLs to the deployed
-   domain (`https://<your-app>.vercel.app/api/auth/callback/github`).
+4. Add the deployed domain to the same Google OAuth client — origin
+   `https://<your-app>.vercel.app` and redirect URI
+   `https://<your-app>.vercel.app/api/auth/callback/google`.
 5. Run `npm run db:migrate` once against the production database — Neon is the
    same database in both cases unless you created a second project.
 

@@ -5,9 +5,11 @@ declare module "next-auth" {
     user: { id: string } & DefaultSession["user"];
   }
 
-  /** GitHub returns the account handle as `login`; the base Profile type omits it. */
+  /**
+   * Google's id token carries `email_verified`; the base Profile type omits it.
+   */
   interface Profile {
-    login?: string;
+    email_verified?: boolean;
   }
 }
 

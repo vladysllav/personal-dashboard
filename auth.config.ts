@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import GitHub from "next-auth/providers/github";
+import Google from "next-auth/providers/google";
 
 /**
  * The edge-safe half of the auth setup. Middleware runs on the edge runtime and
@@ -7,11 +7,11 @@ import GitHub from "next-auth/providers/github";
  * `auth.ts` instead and this file stays importable from both.
  */
 export const authConfig = {
-  providers: [GitHub],
+  providers: [Google],
   pages: { signIn: "/login" },
   // Auth.js infers this on Vercel but throws UntrustedHost anywhere else, which
-  // breaks `next start` and any non-Vercel host. Safe here: GitHub only ever
-  // redirects to the callback URL registered on the OAuth app, and `signIn`
+  // breaks `next start` and any non-Vercel host. Safe here: Google only ever
+  // redirects to a redirect URI registered on the OAuth client, and `signIn`
   // still gates on the allowlist.
   trustHost: true,
   callbacks: {

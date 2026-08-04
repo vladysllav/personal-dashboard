@@ -34,22 +34,24 @@ export default async function LoginPage({
         <form
           action={async () => {
             "use server";
-            await signIn("github", { redirectTo: "/" });
+            await signIn("google", { redirectTo: "/" });
           }}
         >
           <button type="submit" className={styles.button}>
+            {/* Google's mark, monochrome: the four-colour version puts a yellow
+                segment on a yellow button, where it simply disappears. */}
             <svg
               className={styles.mark}
-              viewBox="0 0 16 16"
+              viewBox="0 0 24 24"
               aria-hidden="true"
               focusable="false"
             >
               <path
                 fill="currentColor"
-                d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38l-.01-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"
+                d="M12 11v2.4h5.6c-.2 1.4-1.6 4.2-5.6 4.2-3.4 0-6.1-2.8-6.1-6.2S8.6 5.2 12 5.2c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 2.5 14.6 1.5 12 1.5 6.7 1.5 2.4 5.8 2.4 12s4.3 10.5 9.6 10.5c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12Z"
               />
             </svg>
-            Continue with GitHub
+            Continue with Google
           </button>
         </form>
 

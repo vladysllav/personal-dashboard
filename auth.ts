@@ -5,12 +5,13 @@ import { db } from "@/lib/db";
 import { accounts, sessions, users, verificationTokens } from "@/lib/db/schema";
 
 /**
- * Who is allowed in, by GitHub login. This is a personal dashboard on a public
- * URL: without a gate, anyone who found it could read and rewrite your goals.
+ * Who is allowed in, by Google account email. This is a personal dashboard on a
+ * public URL: without a gate, anyone who found it could read and rewrite your
+ * goals.
  */
-const allowedLogins = (process.env.ALLOWED_GITHUB_LOGINS ?? "")
+const allowedEmails = (process.env.ALLOWED_GOOGLE_EMAILS ?? "")
   .split(",")
-  .map((login) => login.trim().toLowerCase())
+  .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -30,10 +31,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn({ profile }) {
       // Fail closed. An unset or empty allowlist locks everyone out, including
       // you — far better than a deploy that silently admits the whole internet.
-      if (allowedLogins.length === 0) return false;
-      const login = profile?.login;
-      if (typeof login !== "string") return false;
-      return allowedLogins.includes(login.toLowerCase());
+      if (allowedEmails.length === 0) return false;
+      // An unverified address proves nothing about who owns it, and the
+      // allowlist is only as good as the identity behind the address.
+      if (profile?.email_verified !== true) return false;
+      const email = profile?.email;
+      if (typeof email !== "string") return false;
+      return allowedEmails.includes(email.toLowerCase());
     },
 
     jwt({ token, user }) {
