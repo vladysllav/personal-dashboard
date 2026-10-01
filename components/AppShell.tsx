@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { Icon, type IconName } from "./Icon";
+import { TelegramTabs, useInTelegram } from "./Telegram";
 
 /**
  * The frame: a left column of sections, and to the right the page title with
@@ -160,6 +161,14 @@ export function AppShell({
 }) {
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+  /**
+   * The CSS variant hides the rail and the drawer in the first paint; this
+   * takes them out of the document once hydration confirms where we are.
+   * Hidden is not gone: left in place they stay in the accessibility tree as a
+   * second and third navigation landmark, all three named "Sections", and a
+   * screen reader would offer a drawer that cannot be opened.
+   */
+  const inTelegram = useInTelegram();
 
   // A native <dialog>: Esc, the focus trap and the top layer come free and
   // correct.
@@ -179,10 +188,13 @@ export function AppShell({
           Skip to content
         </a>
 
-        <aside className="hidden w-[248px] shrink-0 flex-col border-r border-line bg-surface lg:flex">
-          <SidebarBody account={account} />
-        </aside>
+        {!inTelegram && (
+          <aside className="hidden w-[248px] shrink-0 flex-col border-r border-line bg-surface lg:flex tg:lg:hidden">
+            <SidebarBody account={account} />
+          </aside>
+        )}
 
+        {!inTelegram && (
         <dialog
           ref={dialog}
           onClose={() => setOpen(false)}
@@ -206,12 +218,21 @@ export function AppShell({
             <Icon name="close" size={18} />
           </button>
         </dialog>
+        )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <main id="main" className="flex-1 px-4 pb-10 sm:px-6">
+          {/* The bar is fixed, so the page needs room under it: its height,
+              the home indicator, and the gap a last card would otherwise
+              lose. */}
+          <main
+            id="main"
+            className="flex-1 px-4 pb-10 sm:px-6 tg:pb-[calc(56px+1rem+env(safe-area-inset-bottom,0px))]"
+          >
             {children}
           </main>
         </div>
+
+        <TelegramTabs />
       </div>
     </ChromeContext.Provider>
   );
@@ -241,7 +262,7 @@ export function PageHeader({
       {back && (
         <Link
           href={back.href}
-          className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink"
+          className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-ink-2 hover:text-ink tg:hidden"
         >
           <Icon name="arrowLeft" size={15} />
           {back.label}
@@ -252,7 +273,7 @@ export function PageHeader({
           type="button"
           onClick={openNav}
           aria-label="Open sections"
-          className="-ml-1 shrink-0 rounded-[var(--radius-control)] border border-line bg-surface p-2 text-ink-2 hover:text-ink lg:hidden"
+          className="-ml-1 shrink-0 rounded-[var(--radius-control)] border border-line bg-surface p-2 text-ink-2 hover:text-ink lg:hidden tg:hidden"
         >
           <span aria-hidden className="block h-[2px] w-4 rounded-full bg-current" />
           <span aria-hidden className="mt-[4px] block h-[2px] w-4 rounded-full bg-current" />

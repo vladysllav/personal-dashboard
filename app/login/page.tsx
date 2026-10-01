@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 import { Icon } from "@/components/Icon";
+import { TelegramSignIn } from "@/components/TelegramSignIn";
 
 export const metadata: Metadata = {
   title: "Sign in · Personal Dashboard",
@@ -25,6 +26,10 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas p-6">
       <div className="w-full max-w-[380px] rounded-[14px] border border-line bg-surface p-6 shadow-card">
+        {/* Renders nothing outside Telegram. Inside it, this screen signs in
+            on its own and never gets looked at. */}
+        <TelegramSignIn />
+
         <span
           aria-hidden="true"
           className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-white"

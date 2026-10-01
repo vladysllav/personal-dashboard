@@ -1,6 +1,15 @@
 @import "tailwindcss";
 
 /**
+ * `tg:` — running inside the Telegram Mini App.
+ *
+ * Keyed off an attribute the layout sets before hydration rather than off React
+ * state, so the bottom bar and the hidden sidebar are right in the first paint
+ * instead of snapping into place a frame later.
+ */
+@custom-variant tg (html[data-tg] &);
+
+/**
  * Design tokens — see DESIGN.md.
  *
  * Neutrals carry almost no chroma (0.003–0.012) and lean toward the green
@@ -92,6 +101,12 @@
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+}
+
+/* Inside Telegram the page is the whole app: it owns the scroll, and the
+   bottom bar sits above the home indicator. */
+html[data-tg] body {
+  overscroll-behavior-y: none;
 }
 
 /* ── Surfaces the browser paints, not us ──────────────────────────────
