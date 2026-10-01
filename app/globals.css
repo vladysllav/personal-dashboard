@@ -1,119 +1,135 @@
-/*
+@import "tailwindcss";
+
+/**
  * Design tokens — see DESIGN.md.
- * Neutrals are derived in OKLCH at the accent's own hue (104) with chroma
- * 0.006–0.014: warm enough that the darks never read as slate or navy,
- * far too little to read as olive. "The Warm Dark Rule".
+ *
+ * Neutrals carry almost no chroma (0.003–0.012) and lean toward the green
+ * accent rather than toward a default warmth: the greys have to belong to this
+ * system instead of sitting next to it as somebody else's greys.
+ *
+ * Colour always means something here. Green is the accent and "done", red is
+ * "behind plan", amber is "almost". Nothing is coloured for decoration.
  */
-:root {
-  color-scheme: dark;
+@theme {
+  /* Canvas and surfaces.
+   *
+   * The canvas steps down a shade and the cards stay pure white: the
+   * reference dashboards read as *panels resting on a surface*, and that
+   * separation is carried by the gap between canvas and card, not by a
+   * border. The border stays anyway, for the case where a card sits on a
+   * card-coloured background. */
+  --color-canvas: #eef1ef;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f9f7;
+  --color-surface-3: #eef1ef;
 
-  /* Surfaces — depth by tone, never by shadow. */
-  --bg: oklch(0.155 0.008 104);
-  --surface-1: oklch(0.185 0.009 104);
-  --surface-2: oklch(0.215 0.009 104);
-  --surface-3: oklch(0.25 0.01 104);
+  /* Lines: hairline for rows, strong for meaningful boundaries */
+  --color-line: #e6e9e6;
+  --color-line-strong: #d5d9d6;
 
-  /* Lines */
-  --line: oklch(0.285 0.01 104);
-  --line-strong: oklch(0.36 0.011 104);
+  /* Text: three levels, all three clear 4.5:1 on every surface above */
+  --color-ink: #1f2520;
+  --color-ink-2: #565d57;
+  --color-ink-3: #696f6a;
 
-  /* Text ramp. --ink-dim is the floor for text: 4.5:1 on every surface above. */
-  --ink: oklch(0.945 0.01 104);
-  --ink-2: oklch(0.76 0.012 104);
-  --ink-dim: oklch(0.635 0.014 104);
+  /* Accent — selection, active state, primary action */
+  --color-accent-50: #eaf8ed;
+  --color-accent-100: #d1efd8;
+  --color-accent-200: #aadfb7;
+  --color-accent-400: #59b576;
+  --color-accent-500: #3fa362;
+  --color-accent-600: #238348;
+  --color-accent-700: #1f713e;
 
-  /* The accent means one thing: the record of what you actually did. */
-  --accent: oklch(0.937 0.174 104); /* #FEEF4C */
-  --accent-hover: oklch(0.97 0.16 104);
-  --accent-quiet: oklch(0.937 0.174 104 / 0.14);
-  /* Dense repeated marks (the consistency grid) use the accent at reduced
-     strength so a month of kept habits reads as texture, not as 200 alerts.
-     Keeps the accent under 10% of the screen — "The Scarcity Rule". */
-  --accent-muted: oklch(0.937 0.174 104 / 0.78);
-  --on-accent: oklch(0.155 0.008 104);
+  /* Plan state */
+  --color-pos-50: #e8f7eb;
+  --color-pos-700: #1f713e;
+  --color-neg-50: #ffedea;
+  --color-neg-600: #c44037;
+  --color-neg-700: #aa3028;
+  --color-warn-50: #fef2db;
+  /* warn-500 is for arcs and lines only: warn-700 is tuned for small text and
+     reads as muddy brown when used as a stroke on white. 3.17:1. */
+  --color-warn-500: #c28426;
+  --color-warn-700: #835a13;
 
-  /* Pace bar. Plan is grey, you are yellow. */
-  --track-rail: oklch(0.245 0.01 104);
-  --track-plan: oklch(0.52 0.013 104);
+  /**
+   * Chart series — nominal categories, so the hues sit as far apart as
+   * possible instead of stepping along one scale. All ≥3:1 on white, so a line
+   * reads on its own without its label.
+   */
+  --color-s1: #3fa362;
+  --color-s2: #2e8dd1;
+  --color-s3: #b88722;
+  --color-s4: #d76549;
+  --color-s5: #8a70b8;
 
-  /* Type — fixed rem scale, ~1.2 ratio. No clamp() in product UI. */
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-md: 1.125rem;
-  --text-lg: 1.375rem;
-  --text-xl: 1.75rem;
-  --text-2xl: 2.125rem;
+  /* The neutral series — "the plan". 3.1:1 on white: grey here is a line you
+     have to see, not a background. */
+  --color-s-muted: #8e948f;
 
-  --weight-normal: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 
-  /* Space — 4pt base */
-  --space-2xs: 0.25rem;
-  --space-xs: 0.5rem;
-  --space-sm: 0.75rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
-  --space-3xl: 4rem;
+  /* Card shadow: offset plus a soft blur. A halo with no offset is not depth.
+   *
+   * Deeper than before and thrown further down, because the cards now sit on a
+   * darker canvas — the old 1px shadow disappeared against it and the panels
+   * read as holes rather than as surfaces. */
+  --shadow-card: 0 1px 2px rgba(31, 37, 32, 0.04),
+    0 10px 24px -16px rgba(31, 37, 32, 0.18);
+  --shadow-pop: 0 18px 44px -12px rgba(31, 37, 32, 0.2), 0 2px 6px rgba(31, 37, 32, 0.05);
 
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Radii. One scale, named by what wears it — see DESIGN.md "Shapes". */
+  --radius-focus: 4px;
+  --radius-badge: 8px;
+  --radius-input: 10px;
+  --radius-control: 12px;
+  --radius-card: 18px;
   --radius-pill: 999px;
-
-  /* Semantic z-index scale. Never arbitrary values. */
-  --z-base: 1;
-  --z-sticky: 100;
-  --z-dropdown: 200;
-  --z-toast: 400;
-
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-fast: 130ms;
-  --dur-base: 190ms;
-  --dur-slow: 260ms;
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-* {
-  margin: 0;
-}
-
-html {
-  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  min-height: 100dvh;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: var(--text-base);
-  /* Light-on-dark compensation: looser leading + a touch of tracking, because
-     perceived weight drops on all three axes when the polarity inverts. */
-  line-height: 1.55;
-  letter-spacing: 0.005em;
-  font-kerning: normal;
-  font-optical-sizing: auto;
-  -webkit-font-smoothing: antialiased;
+  background: var(--color-canvas);
+  color: var(--color-ink);
 }
 
-/* Every figure that can change is tabular. "The Tabular Rule". */
-.num,
+/* ── Surfaces the browser paints, not us ──────────────────────────────
+ * Selection, caret, scrollbar and the default focus ring belong to nobody.
+ * Here they belong to the palette.
+ */
+::selection {
+  background: var(--color-accent-100);
+  color: var(--color-ink);
+}
+
+html {
+  scrollbar-color: var(--color-line-strong) transparent;
+  caret-color: var(--color-accent-600);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* The native checkbox stays native — repainted, not redrawn: a "checkbox"
+   built on a div loses the keyboard, the state and the screen reader. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-accent-600);
+}
+
+/* Figures in tables line up by digit — otherwise the column drifts. */
+table,
+.tnum,
 input[type="number"] {
-  font-variant-numeric: tabular-nums lining-nums;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Spinners are useless for arbitrary decimal entry and their targets are far
-   below 44px. Keyboard arrow keys still increment. */
+/* Spinners are useless for arbitrary decimal entry and their targets sit far
+   below 44px. Keyboard arrows still increment. */
 input[type="number"] {
   appearance: textfield;
 }
@@ -122,171 +138,6 @@ input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   appearance: none;
   margin: 0;
-}
-
-h1,
-h2,
-h3 {
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-  font-weight: var(--weight-semibold);
-  text-wrap: balance;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  letter-spacing: inherit;
-  color: inherit;
-}
-
-button {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
-}
-
-:focus:not(:focus-visible) {
-  outline: none;
-}
-
-::selection {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-/* ---------- Shared primitives ---------- */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  min-height: 36px;
-  padding: 0 var(--space-md);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-  transition:
-    background-color var(--dur-fast) var(--ease-out-quart),
-    color var(--dur-fast) var(--ease-out-quart),
-    border-color var(--dur-fast) var(--ease-out-quart);
-}
-
-.btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: var(--weight-semibold);
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-primary:active:not(:disabled) {
-  background: var(--accent);
-}
-
-.btn-quiet {
-  background: var(--surface-2);
-  color: var(--ink-2);
-  border: 1px solid var(--line);
-}
-
-.btn-quiet:hover:not(:disabled) {
-  background: var(--surface-3);
-  color: var(--ink);
-}
-
-.btn-bare {
-  color: var(--ink-dim);
-  min-height: 32px;
-  padding: 0 var(--space-xs);
-}
-
-.btn-bare:hover:not(:disabled) {
-  color: var(--ink);
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  min-width: 0;
-}
-
-.label {
-  font-size: var(--text-sm);
-  color: var(--ink-dim);
-}
-
-.input {
-  min-height: 36px;
-  width: 100%;
-  padding: 0 var(--space-sm);
-  background: var(--surface-3);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  transition:
-    border-color var(--dur-fast) var(--ease-out-quart),
-    background-color var(--dur-fast) var(--ease-out-quart);
-}
-
-.input::placeholder {
-  /* Placeholders carry the same 4.5:1 floor as body text. */
-  color: var(--ink-dim);
-}
-
-.input:hover {
-  border-color: var(--line-strong);
-}
-
-.input:focus-visible {
-  border-color: var(--accent);
-  outline-offset: 1px;
-}
-
-select.input {
-  appearance: none;
-  padding-right: var(--space-xl);
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink-dim) 50%),
-    linear-gradient(135deg, var(--ink-dim) 50%, transparent 50%);
-  background-position:
-    calc(100% - 17px) center,
-    calc(100% - 12px) center;
-  background-size:
-    5px 5px,
-    5px 5px;
-  background-repeat: no-repeat;
-}
-
-.section-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-md);
-}
-
-.section-title {
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
 }
 
 .visually-hidden {
@@ -302,15 +153,15 @@ select.input {
 
 .skip-link {
   position: absolute;
-  top: var(--space-xs);
-  left: var(--space-xs);
-  z-index: var(--z-toast);
-  padding: var(--space-xs) var(--space-md);
-  background: var(--accent);
-  color: var(--on-accent);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
+  top: 8px;
+  left: 8px;
+  z-index: 50;
+  padding: 8px 14px;
+  background: var(--color-accent-600);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
   transform: translateY(-200%);
 }
 
@@ -318,11 +169,32 @@ select.input {
   transform: translateY(0);
 }
 
-/*
- * Reduced motion: every transition collapses to effectively instant.
- * Nothing in this app gates visibility on a transition, so removing motion
- * never removes content.
+/* ── Motion ───────────────────────────────────────────────────────────
+ * Motion only carries state: page content appearing, a chart line drawing
+ * itself. No staggered block entrances — you come here to log a number, not
+ * to watch the page assemble.
  */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes line-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@theme {
+  --animate-fade-in: fade-in 0.3s ease-out both;
+  --animate-rise: rise 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-line-grow: line-grow 1s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -332,4 +204,25 @@ select.input {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Interactive states run at 180ms: the user is in flow, there is nothing to
+   wait for. */
+button,
+a,
+input,
+select,
+textarea,
+summary {
+  transition: color 0.18s ease, background-color 0.18s ease,
+    border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+/* Bars and arcs grow from their own baseline when they first render. */
+.bar-fill {
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.arc-grow {
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }

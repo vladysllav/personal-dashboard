@@ -43,6 +43,8 @@ export async function insertHabit(tx: Tx, userId: string, habit: Habit): Promise
     userId,
     name: habit.name,
     weeklyTarget: habit.weeklyTarget ?? null,
+    startDate: habit.startDate,
+    durationWeeks: habit.durationWeeks,
     createdAt: habit.createdAt,
   });
 

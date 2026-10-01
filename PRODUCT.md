@@ -37,7 +37,7 @@ Success looks like: opens it daily, logs without friction, and trusts what it sa
 
 - **Personal** — it speaks to one person who already knows the context. First person where natural ("your streak", not "user streak"). No corporate voice, no third-person product-speak, no explaining his own data back to him.
 - **Motivating** — through *honest momentum*, not cheerleading. Credit real progress specifically ("11 days"), stay quiet on ordinary days, and when a streak breaks, state it plainly and show the path back. No confetti, no manufactured praise, no guilt mechanics.
-- **Warm** — carried by typography, copy, and the yellow accent. Not by rounding every corner, not by emoji, not by illustration. Warmth here means *unhurried and on your side*, not soft or cute.
+- **Warm** — carried by typography, copy, and a light canvas that never glares. Not by rounding every corner, not by emoji, not by illustration. Warmth here means *unhurried and on your side*, not soft or cute.
 
 The tone target: a good training log, not a productivity app trying to retain you.
 
@@ -71,13 +71,13 @@ Specifically avoid:
 
 Target **WCAG 2.2 AA**. Single-user tool, but the constraints are real ergonomics, not compliance theatre — this gets looked at daily, often tired.
 
-- **Contrast.** Body text ≥4.5:1, large text ≥3:1, against its actual background. On the dark surface this means resisting the mid-grey body text that makes dark UIs feel unreadable.
-- **Yellow is a light colour.** `#FEEF4C` is excellent as text/graphics on near-black and fails as text on white. As a *fill*, it demands near-black text on top, never white. Verify every pairing rather than assuming.
-- **Never encode meaning by colour alone.** On-track vs. behind, active streak vs. broken, gain vs. loss — always pair colour with a label, shape, position, or icon. A single-accent palette makes this easy to get wrong.
+- **Contrast.** Body text ≥4.5:1, large text ≥3:1, against its actual background. All three ink levels are verified against all three surfaces; the tightest pair is `ink-3` on `surface-3` at 4.52:1.
+- **A tone for text is not a tone for a stroke.** `warn-700` is tuned for small text on light and reads as muddy brown as a line; arcs and bars take `warn-500` instead. Verify every pairing rather than assuming.
+- **Never encode meaning by colour alone.** On-track vs. behind, active streak vs. broken, gain vs. loss — always pair colour with a label, shape, position, or icon. The status badge carries a drawn arrow; the pace bar and the ring carry a plan marker.
 - **Reduced motion is required, not optional.** Every animation needs a `prefers-reduced-motion: reduce` path — typically a crossfade or an instant state change. Progress and streak animations are the likely offenders.
 - **Keyboard-complete capture.** The logging flow must be fully operable from the keyboard, with visible focus states. This is an ergonomics win, not just an a11y one — it's the fastest path for daily entry.
 - **Charts need non-colour affordances.** Direct labels over legends where possible; distinguish series by more than hue.
 
 ## Stack
 
-Next.js (App Router) + TypeScript.
+Next.js (App Router) + TypeScript + Tailwind CSS v4.

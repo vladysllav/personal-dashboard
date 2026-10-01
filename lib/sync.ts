@@ -6,6 +6,16 @@ import type {
   Habit,
 } from "./types";
 
+/**
+ * The commitment behind a habit — everything the form can change. Marks are
+ * never patched here: editing the cadence re-scores the history it already has
+ * rather than rewriting it.
+ */
+export type HabitPatch = Pick<
+  Habit,
+  "name" | "weeklyTarget" | "startDate" | "durationWeeks"
+>;
+
 /** Fields a user may change after creation. Identity, entries and marks are never patched here. */
 export type GoalPatch = Partial<
   Pick<
@@ -43,7 +53,7 @@ export type Intent =
   | { type: "removeGoal"; goalId: string }
   | { type: "addHabit"; habit: Habit }
   | { type: "seedSampleHabits" }
-  | { type: "editHabit"; habitId: string; name: string; weeklyTarget: number }
+  | { type: "editHabit"; habitId: string; patch: HabitPatch }
   | { type: "toggleHabit"; habitId: string; dateKey: string }
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }
@@ -73,7 +83,7 @@ export type SyncAction =
   | { type: "setMilestone"; goalId: string; milestoneId: string; done: boolean }
   | { type: "removeGoal"; goalId: string }
   | { type: "addHabits"; habits: Habit[] }
-  | { type: "editHabit"; habitId: string; name: string; weeklyTarget: number }
+  | { type: "editHabit"; habitId: string; patch: HabitPatch }
   | { type: "setHabitMark"; habitId: string; dateKey: string; done: boolean }
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }

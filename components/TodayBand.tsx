@@ -8,65 +8,66 @@ import { useStore } from "@/lib/store";
 import type { Goal } from "@/lib/types";
 import { Icon } from "./Icon";
 import { TickChip } from "./TickChip";
-import styles from "./TodayBand.module.css";
+import { Alert, Button, Card, CardHead, Empty, Field, Input, Select } from "./ui";
 
+/**
+ * The capture band: the two things done every single day, side by side and
+ * above everything that only gets read. Logging is the product, so it gets the
+ * best real estate and the shortest path.
+ */
 export function TodayBand({ today }: { today: string }) {
   const { state, dispatch, syncError } = useStore();
   const marked = state.habits.filter((h) => h.marks.includes(today)).length;
 
   return (
-    <section className={styles.band} aria-labelledby="today-heading">
+    <section aria-labelledby="today-heading" className="animate-rise">
       <h2 id="today-heading" className="visually-hidden">
         Log today
       </h2>
 
       {syncError && (
-        <p className={styles.alert} role="alert">
-          <span className={styles.alertMark} aria-hidden="true">
-            !
-          </span>
-          {syncError}
-        </p>
+        <div className="mb-4">
+          <Alert>{syncError}</Alert>
+        </div>
       )}
 
-      <div className={styles.pane}>
-        <div className={styles.paneHead}>
-          <h3 className={styles.paneTitle}>Habits today</h3>
-          {state.habits.length > 0 && (
-            <p className={`${styles.paneMeta} num`}>
-              {marked} of {state.habits.length} marked
-            </p>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHead
+            title="Habits today"
+            right={
+              state.habits.length > 0 ? (
+                <span className="text-[13px] text-ink-3 tnum">
+                  {marked} of {state.habits.length} marked
+                </span>
+              ) : undefined
+            }
+          />
+          {state.habits.length === 0 ? (
+            <Empty>Add a habit below and it will appear here every day.</Empty>
+          ) : (
+            <ul className="flex flex-wrap gap-2 p-4 sm:p-5">
+              {state.habits.map((habit) => (
+                <li key={habit.id}>
+                  <TickChip
+                    done={habit.marks.includes(today)}
+                    srSuffix="today"
+                    onClick={() =>
+                      dispatch({
+                        type: "toggleHabit",
+                        habitId: habit.id,
+                        dateKey: today,
+                      })
+                    }
+                  >
+                    {habit.name}
+                  </TickChip>
+                </li>
+              ))}
+            </ul>
           )}
-        </div>
+        </Card>
 
-        {state.habits.length === 0 ? (
-          <p className={styles.empty}>
-            Add a habit below and it will appear here every day.
-          </p>
-        ) : (
-          <ul className={styles.chips}>
-            {state.habits.map((habit) => (
-              <li key={habit.id}>
-                <TickChip
-                  done={habit.marks.includes(today)}
-                  srSuffix="today"
-                  onClick={() =>
-                    dispatch({
-                      type: "toggleHabit",
-                      habitId: habit.id,
-                      dateKey: today,
-                    })
-                  }
-                >
-                  {habit.name}
-                </TickChip>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className={`${styles.pane} ${styles.log}`}>
         <QuickLog today={today} />
       </div>
     </section>
@@ -99,14 +100,10 @@ function QuickLog({ today }: { today: string }) {
 
   if (!selected) {
     return (
-      <>
-        <div className={styles.paneHead}>
-          <h3 className={styles.paneTitle}>Log progress</h3>
-        </div>
-        <p className={styles.empty}>
-          Nothing to log yet — add a goal and it becomes available here.
-        </p>
-      </>
+      <Card>
+        <CardHead title="Log progress" />
+        <Empty>Nothing to log yet — add a goal and it becomes available here.</Empty>
+      </Card>
     );
   }
 
@@ -163,19 +160,14 @@ function QuickLog({ today }: { today: string }) {
   }
 
   return (
-    <>
-      <div className={styles.paneHead}>
-        <h3 className={styles.paneTitle}>Log progress</h3>
-      </div>
+    <Card>
+      <CardHead title="Log progress" />
 
-      <form className={styles.form} onSubmit={commitValue} noValidate>
-        <div className="field">
-          <label className="label" htmlFor="log-goal">
-            Goal
-          </label>
-          <select
+      <form className="flex flex-col gap-3 p-4 sm:p-5" onSubmit={commitValue} noValidate>
+        <Field label="Goal" htmlFor="log-goal">
+          <Select
             id="log-goal"
-            className="input"
+            size="lg"
             value={selected.id}
             onChange={(e) => {
               setGoalId(e.target.value);
@@ -188,91 +180,89 @@ function QuickLog({ today }: { today: string }) {
                 {g.name}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
         {selected.kind === "milestone" ? (
           nextMilestone ? (
-            <>
-              <p className={styles.nextMilestone}>
-                Next up: <strong>{nextMilestone.label}</strong>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-[13px] text-ink-2">
+                Next up: <strong className="font-medium text-ink">{nextMilestone.label}</strong>
               </p>
-              <button
-                type="button"
-                className="btn btn-primary"
+              <Button
+                variant="primary"
+                className="ml-auto"
+                icon={<Icon name="check" size={15} />}
                 onClick={commitMilestone}
               >
-                <Icon name="check" size={16} />
                 Mark done
-              </button>
-            </>
+              </Button>
+            </div>
           ) : (
-            <p className={styles.empty}>Every milestone is done.</p>
+            <p className="text-[13px] text-ink-3">Every milestone is done.</p>
           )
         ) : (
           <>
-            <div className={styles.inline}>
-              <div className={`field ${styles.inlineGrow}`}>
-                <label className="label" htmlFor="log-value">
-                  {selected.kind === "accumulate" ? "Add" : "New reading"}
-                </label>
-                <input
-                  id="log-value"
-                  ref={valueRef}
-                  className="input num"
-                  type="number"
-                  step="any"
-                  inputMode="decimal"
-                  value={value}
-                  onChange={(e) => {
-                    setValue(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder={
-                    selected.kind === "accumulate"
-                      ? "0"
-                      : String(currentValue(selected))
-                  }
-                />
-              </div>
-              {selected.unit && (
-                <span className={styles.suffix}>{selected.unit}</span>
-              )}
-              <div className={`field ${styles.dateField}`}>
-                <label className="label" htmlFor="log-date">
-                  Date
-                </label>
-                <input
+            <div className="flex flex-wrap items-end gap-2">
+              <Field
+                label={selected.kind === "accumulate" ? "Add" : "New reading"}
+                htmlFor="log-value"
+                className="flex-1 basis-[140px]"
+              >
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="log-value"
+                    ref={valueRef}
+                    size="lg"
+                    type="number"
+                    step="any"
+                    inputMode="decimal"
+                    invalid={Boolean(error)}
+                    value={value}
+                    onChange={(e) => {
+                      setValue(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder={
+                      selected.kind === "accumulate"
+                        ? "0"
+                        : String(currentValue(selected))
+                    }
+                  />
+                  {selected.unit && (
+                    <span className="shrink-0 text-[13px] text-ink-3">
+                      {selected.unit}
+                    </span>
+                  )}
+                </div>
+              </Field>
+
+              <Field label="Date" htmlFor="log-date" className="basis-[152px]">
+                <Input
                   id="log-date"
-                  className="input num"
+                  size="lg"
                   type="date"
                   max={today}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
-              </div>
-              <button type="submit" className="btn btn-primary">
+              </Field>
+
+              <Button type="submit" variant="primary" className="py-2.5">
                 Log
-              </button>
+              </Button>
             </div>
 
-            {error && (
-              <p className={styles.alert} role="alert">
-                <span className={styles.alertMark} aria-hidden="true">
-                  !
-                </span>
-                {error}
-              </p>
-            )}
+            {error && <Alert>{error}</Alert>}
           </>
         )}
 
         {receipt && (
-          <p className={styles.receipt}>
-            <span className={styles.receiptText}>{receipt.text}</span>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[8px] bg-accent-50 px-3 py-2 text-[13px] text-accent-700">
+            <span className="min-w-0">{receipt.text}</span>
             <button
               type="button"
-              className="btn btn-quiet"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-[8px] px-2 py-1 text-[13px] font-medium text-accent-700 hover:bg-accent-100"
               onClick={() => {
                 dispatch({ type: "undoLastEntry", goalId: receipt.goalId });
                 setReceipt(null);
@@ -284,6 +274,6 @@ function QuickLog({ today }: { today: string }) {
           </p>
         )}
       </form>
-    </>
+    </Card>
   );
 }

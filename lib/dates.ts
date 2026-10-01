@@ -100,8 +100,58 @@ export function monthKey(key: string): string {
   return key.slice(0, 7);
 }
 
-/** Single-letter weekday initials, Monday-first, aligned to startOfWeek. */
-export const WEEKDAY_INITIALS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+/** Inclusive last day of the calendar month containing `key`. */
+export function endOfMonth(key: string): string {
+  const d = fromDateKey(key);
+  // Day 0 of the next month is the last day of this one.
+  return toDateKey(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+}
+
+/**
+ * Shifts a month key or date key by whole months, landing on the 1st.
+ * Always day-1 anchored so the classic 31 Jan → 3 Mar overflow can't happen.
+ */
+export function addMonths(key: string, n: number): string {
+  const d = fromDateKey(`${monthKey(key)}-01`);
+  return toDateKey(new Date(d.getFullYear(), d.getMonth() + n, 1));
+}
+
+/**
+ * The cells of a month's calendar grid, Monday-first and always whole weeks —
+ * so every row has seven columns and the weekday header lines up. Days spilling
+ * in from the neighbouring months are flagged rather than dropped: a blank cell
+ * there breaks the grid, a dimmed date does not.
+ */
+export function monthGrid(key: string): Array<{ day: string; inMonth: boolean }> {
+  const mk = monthKey(key);
+  const first = `${mk}-01`;
+  const last = endOfMonth(first);
+  const start = startOfWeek(first);
+  const end = addDays(startOfWeek(last), 6);
+
+  const cells: Array<{ day: string; inMonth: boolean }> = [];
+  for (let day = start; day <= end; day = addDays(day, 1)) {
+    cells.push({ day, inMonth: monthKey(day) === mk });
+  }
+  return cells;
+}
+
+/** Day-of-month as a bare number, for calendar cells. */
+export function dayOfMonth(key: string): number {
+  return Number(key.slice(8, 10));
+}
+
+/**
+ * Two-letter weekday abbreviations, Monday-first. The calendar header needs
+ * these rather than the initials: "T T" and "S S" are not a column label.
+ */
+export const WEEKDAY_ABBR = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
+
+/**
+ * Three-letter weekday names, Monday-first. The two-letter form is sized for a
+ * 24px calendar column; an axis tick under a chart bar has room to say "Mon".
+ */
+export const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
 /** Monday-first weekday index (0=Mon..6=Sun) for a date key. */
 export function weekdayIndex(key: string): number {
@@ -154,8 +204,12 @@ export function formatShortDate(key: string): string {
   return SHORT_DATE.format(fromDateKey(key));
 }
 
-const MONTH_ABBR = new Intl.DateTimeFormat("en-GB", { month: "short" });
+const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
+  month: "long",
+  year: "numeric",
+});
 
-export function formatMonthAbbr(key: string): string {
-  return MONTH_ABBR.format(fromDateKey(key));
+/** "September 2026" — the title above a calendar month. */
+export function formatMonthYear(key: string): string {
+  return MONTH_YEAR.format(fromDateKey(`${monthKey(key)}-01`));
 }

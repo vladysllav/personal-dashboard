@@ -88,20 +88,45 @@ export async function loadState(userId: string): Promise<DashboardState> {
     })),
   }));
 
-  const builtHabits: Habit[] = habitRows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    createdAt: row.createdAt,
-    // The client model omits the field for daily habits rather than storing 7.
-    ...(row.weeklyTarget === null ? {} : { weeklyTarget: row.weeklyTarget }),
-    marks: (marksByHabit.get(row.id) ?? []).map((mark) => mark.dateKey),
-  }));
+  const builtHabits: Habit[] = habitRows.map((row) => {
+    const marks = (marksByHabit.get(row.id) ?? []).map((mark) => mark.dateKey);
+    return {
+      id: row.id,
+      name: row.name,
+      createdAt: row.createdAt,
+      // The client model omits the field for daily habits rather than storing 7.
+      ...(row.weeklyTarget === null ? {} : { weeklyTarget: row.weeklyTarget }),
+      startDate: row.startDate ?? fallbackStart(row.createdAt, marks),
+      durationWeeks: row.durationWeeks,
+      marks,
+    };
+  });
 
   return {
     goals: builtGoals,
     habits: builtHabits,
     prefs: { goalView: prefRow[0]?.goalView ?? DEFAULT_PREFS.goalView },
   };
+}
+
+/**
+ * Where a habit written before the plan fields existed is taken to begin.
+ *
+ * The creation day is the obvious answer, but it is not always the earliest
+ * one: a mark can be backdated, and a start date later than its own history
+ * would push those marks outside the commitment window, where they stop being
+ * counted. So the earliest of the two wins — a start that is a day early costs
+ * one day of expectation and can be edited; a start that is late silently
+ * discards days you actually did.
+ *
+ * `createdAt` is a UTC instant, so slicing its date can land a day before the
+ * local one near midnight. That error runs in the safe direction, and the
+ * server has no way to know the viewer's timezone anyway.
+ */
+function fallbackStart(createdAt: string, marks: string[]): string {
+  const created = createdAt.slice(0, 10);
+  const earliestMark = marks.length ? marks.reduce((a, b) => (a < b ? a : b)) : null;
+  return earliestMark !== null && earliestMark < created ? earliestMark : created;
 }
 
 function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {

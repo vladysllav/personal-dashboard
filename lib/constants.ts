@@ -8,8 +8,5 @@
  */
 export const ON_PACE_TOLERANCE = 0.75;
 
-/** Days rendered in the consistency grid. */
-export const HABIT_WINDOW = 28;
-
 /** Where state is persisted. Bumping the suffix discards incompatible data. */
 export const STORAGE_KEY = "personal-dashboard:v1";

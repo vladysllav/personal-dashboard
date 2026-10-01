@@ -120,7 +120,12 @@ export async function applyAction(input: unknown): Promise<void> {
       await requireHabit(userId, action.habitId);
       await db
         .update(habits)
-        .set({ name: action.name, weeklyTarget: action.weeklyTarget })
+        .set({
+          name: action.patch.name,
+          weeklyTarget: action.patch.weeklyTarget ?? null,
+          startDate: action.patch.startDate,
+          durationWeeks: action.patch.durationWeeks,
+        })
         .where(eq(habits.id, action.habitId));
       return;
     }

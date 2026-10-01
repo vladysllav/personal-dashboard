@@ -35,12 +35,24 @@ export const goalSchema = z.object({
   milestones: z.array(milestoneSchema).max(500),
 });
 
+/** Ten years of weeks. Far past any real commitment, short of an unbounded write. */
+const durationWeeks = z.number().int().min(1).max(520).nullable();
+
 export const habitSchema = z.object({
   id,
   name: label,
   marks: z.array(dateKey).max(10_000),
   weeklyTarget: z.number().int().min(1).max(7).optional(),
+  startDate: dateKey,
+  durationWeeks,
   createdAt: timestamp,
+});
+
+const habitPatchSchema = z.object({
+  name: label,
+  weeklyTarget: z.number().int().min(1).max(7).optional(),
+  startDate: dateKey,
+  durationWeeks,
 });
 
 const goalPatchSchema = z
@@ -86,8 +98,7 @@ export const syncActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("editHabit"),
     habitId: id,
-    name: label,
-    weeklyTarget: z.number().int().min(1).max(7),
+    patch: habitPatchSchema,
   }),
   z.object({
     type: z.literal("setHabitMark"),

@@ -1,205 +1,51 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
-import { HABIT_WINDOW } from "@/lib/constants";
-import { formatShortDate } from "@/lib/dates";
-import { deriveHabit, windowDays } from "@/lib/habits";
-import { newId, useStore } from "@/lib/store";
-import type { Habit } from "@/lib/types";
+import Link from "next/link";
+import { useStore } from "@/lib/store";
+import { HabitOverview } from "./HabitOverview";
 import { Icon } from "./Icon";
-import styles from "./HabitSection.module.css";
+import { Card, CardHead, Empty } from "./ui";
 
+/**
+ * Habits on the main dashboard: the picture, not the controls.
+ *
+ * Ticking today already happens in the band above, so repeating a row of
+ * checkboxes here would be the same action twice on one screen. What this
+ * section adds instead is the view you cannot get from a single day — the
+ * share of the plan kept overall, day by day, and week by week — with the
+ * month calendars a click away.
+ */
 export function HabitSection({ today }: { today: string }) {
-  const { state, dispatch } = useStore();
-  const [adding, setAdding] = useState(false);
-  const days = windowDays(today, HABIT_WINDOW);
+  const { state } = useStore();
+
+  if (state.habits.length === 0) {
+    return (
+      <Card aria-labelledby="habits-heading">
+        <CardHead id="habits-heading" title="Habits" />
+        <Empty>
+          No habits yet. A habit here is a commitment with a shape — how often,
+          and for how long — so it can be ahead or behind, not just ticked.
+        </Empty>
+      </Card>
+    );
+  }
 
   return (
-    <section aria-labelledby="habits-heading">
-      <div className="section-head">
-        <h2 className="section-title" id="habits-heading">
-          Consistency
+    <section aria-labelledby="habits-heading" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 id="habits-heading" className="text-[13.5px] font-medium text-ink">
+          Habits
         </h2>
-        {!adding && (
-          <button
-            type="button"
-            className="btn btn-quiet"
-            onClick={() => setAdding(true)}
-          >
-            <Icon name="plus" size={16} />
-            Add habit
-          </button>
-        )}
-      </div>
-
-      {state.habits.length === 0 ? (
-        <p className={styles.hint}>
-          No habits yet. Each one becomes a row of the last {HABIT_WINDOW} days.
-        </p>
-      ) : (
-        <div
-          className={styles.wrap}
-          style={{ "--habit-days": HABIT_WINDOW } as CSSProperties}
+        <Link
+          href="/habits"
+          className="inline-flex items-center gap-1 text-[13px] text-ink-2 hover:text-ink"
         >
-          <div className={styles.head}>
-            <p className={styles.headSpan}>
-              <span>{formatShortDate(days[0] ?? today)}</span>
-              <span>Today</span>
-            </p>
-            <p className={styles.headStreak}>Streak</p>
-          </div>
+          Month calendars
+          <Icon name="chevronRight" size={14} />
+        </Link>
+      </div>
 
-          {state.habits.map((habit) => (
-            <HabitRow
-              key={habit.id}
-              habit={habit}
-              today={today}
-              days={days}
-              onToggle={(dateKey) =>
-                dispatch({ type: "toggleHabit", habitId: habit.id, dateKey })
-              }
-              onRemove={() =>
-                dispatch({ type: "removeHabit", habitId: habit.id })
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      {adding && (
-        <AddHabitForm
-          onCancel={() => setAdding(false)}
-          onSubmit={(name) => {
-            dispatch({
-              type: "addHabit",
-              habit: {
-                id: newId(),
-                name,
-                marks: [],
-                createdAt: new Date().toISOString(),
-              },
-            });
-            setAdding(false);
-          }}
-        />
-      )}
+      <HabitOverview habits={state.habits} today={today} />
     </section>
-  );
-}
-
-function HabitRow({
-  habit,
-  today,
-  days,
-  onToggle,
-  onRemove,
-}: {
-  habit: Habit;
-  today: string;
-  days: string[];
-  onToggle: (dateKey: string) => void;
-  onRemove: () => void;
-}) {
-  const marks = new Set(habit.marks);
-  const { streak, hits, broken } = deriveHabit(habit, today, HABIT_WINDOW);
-
-  return (
-    <div className={styles.row}>
-      <div className={styles.nameCell}>
-        <h3 className={styles.name} title={habit.name}>
-          {habit.name}
-        </h3>
-        <button type="button" className={styles.remove} onClick={onRemove}>
-          <Icon name="close" size={12} />
-          <span className="visually-hidden">Remove {habit.name}</span>
-        </button>
-      </div>
-
-      <div className={styles.days}>
-        {days.map((day) => {
-          const done = marks.has(day);
-          const isToday = day === today;
-          return (
-            <button
-              key={day}
-              type="button"
-              className={styles.day}
-              data-done={done}
-              data-today={isToday}
-              aria-pressed={done}
-              onClick={() => onToggle(day)}
-            >
-              <span className="visually-hidden">
-                {habit.name}, {isToday ? "today" : formatShortDate(day)} —{" "}
-                {done ? "done" : "not marked"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className={styles.streak}>
-        <p className={styles.streakTop}>
-          <span
-            className={`${styles.streakNum} num ${streak === 0 ? styles.streakZero : ""}`}
-          >
-            {streak}
-          </span>
-          <span className={styles.streakLabel}>
-            {streak === 1 ? "day" : "days"}
-          </span>
-        </p>
-        <p className={styles.streakSub}>
-          {broken ? (
-            "start again"
-          ) : (
-            <span className="num">
-              {hits} of {HABIT_WINDOW}
-            </span>
-          )}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AddHabitForm({
-  onSubmit,
-  onCancel,
-}: {
-  onSubmit: (name: string) => void;
-  onCancel: () => void;
-}) {
-  const [name, setName] = useState("");
-  const trimmed = name.trim();
-
-  return (
-    <form
-      className={styles.form}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (trimmed) onSubmit(trimmed);
-      }}
-    >
-      <div className={`field ${styles.formField}`}>
-        <label className="label" htmlFor="habit-name">
-          Habit name
-        </label>
-        <input
-          id="habit-name"
-          className="input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Morning pages"
-          autoFocus
-        />
-      </div>
-      <button type="submit" className="btn btn-primary" disabled={!trimmed}>
-        Add
-      </button>
-      <button type="button" className="btn btn-quiet" onClick={onCancel}>
-        Cancel
-      </button>
-    </form>
   );
 }

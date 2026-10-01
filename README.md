@@ -9,7 +9,7 @@ same dashboard follows you from laptop to phone.
 - **Framework** — Next.js 15 (App Router, React 19)
 - **Database** — Neon (serverless Postgres) via Drizzle ORM
 - **Auth** — Auth.js v5, Google OAuth, restricted to an allowlist
-- **Styling** — CSS Modules and design tokens (see `DESIGN.md`)
+- **Styling** — Tailwind CSS v4 with the design tokens declared in `app/globals.css` (see `DESIGN.md`)
 
 ---
 

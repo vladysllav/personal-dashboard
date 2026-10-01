@@ -7,16 +7,28 @@ import { describeGoal } from "@/lib/describe";
 import { formatRange, formatValue } from "@/lib/format";
 import { sortByUrgency, type GoalDerived } from "@/lib/goals";
 import { useStore } from "@/lib/store";
-import type { Goal, GoalView } from "@/lib/types";
+import type { Goal } from "@/lib/types";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Donut } from "./Donut";
 import { GoalForm } from "./GoalForm";
 import { Icon } from "./Icon";
 import { PaceBar } from "./PaceBar";
+import { StatusBadge, statusText } from "./StatusBadge";
 import { TickChip } from "./TickChip";
-import styles from "./GoalSection.module.css";
+import { Button, Card, CardHead, Empty, IconButton, Note, Seg } from "./ui";
 
-export function GoalSection({ today }: { today: string }) {
+/**
+ * Every goal, ranked by what needs attention first. Two readings of the same
+ * data: dense rows with a bullet chart each, or a grid of rings. Both keep the
+ * plan visible next to the fact — a percentage on its own always looks fine.
+ */
+export function GoalSection({
+  today,
+  title = "Goals",
+}: {
+  today: string;
+  title?: string;
+}) {
   const { state, dispatch } = useStore();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,30 +43,34 @@ export function GoalSection({ today }: { today: string }) {
   const empty = ranked.length === 0 && !adding && !editing;
 
   return (
-    <section aria-labelledby="goals-heading">
-      <div className="section-head">
-        <h2 className="section-title" id="goals-heading">
-          Goals
-        </h2>
-        <div className={styles.headActions}>
-          {ranked.length > 0 && (
-            <ViewToggle
-              value={view}
-              onChange={(v) => dispatch({ type: "setGoalView", view: v })}
-            />
-          )}
-          {!adding && !editing && (
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => setAdding(true)}
-            >
-              <Icon name="plus" size={16} />
-              Add goal
-            </button>
-          )}
-        </div>
-      </div>
+    <Card className="overflow-hidden" aria-labelledby="goals-heading">
+      <CardHead
+        id="goals-heading"
+        title={title}
+        right={
+          <>
+            {ranked.length > 0 && (
+              <Seg
+                label="Goal layout"
+                value={view}
+                onChange={(v) => dispatch({ type: "setGoalView", view: v })}
+                options={[
+                  { value: "bar", label: "Pace", icon: "bars" },
+                  { value: "ring", label: "Rings", icon: "ring" },
+                ]}
+              />
+            )}
+            {!adding && !editing && (
+              <Button
+                icon={<Icon name="plus" size={15} />}
+                onClick={() => setAdding(true)}
+              >
+                Add goal
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {adding && (
         <GoalForm
@@ -80,14 +96,14 @@ export function GoalSection({ today }: { today: string }) {
       )}
 
       {empty ? (
-        <p className={styles.hint}>
+        <Empty>
           No goals yet. Add one with a start value, a target, and the number of
           steps to get there.
-        </p>
+        </Empty>
       ) : view === "ring" ? (
-        <ul className={styles.ringGrid}>
+        <ul className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
           {ranked.map(({ goal, derived }) => (
-            <RingCard
+            <RingCell
               key={goal.id}
               goal={goal}
               derived={derived}
@@ -97,17 +113,23 @@ export function GoalSection({ today }: { today: string }) {
           ))}
         </ul>
       ) : (
-        <ul className={styles.list}>
-          {ranked.map(({ goal, derived }) => (
-            <GoalRow
-              key={goal.id}
-              goal={goal}
-              derived={derived}
-              onEdit={() => setEditingId(goal.id)}
-              onDelete={() => setPendingDelete(goal)}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="divide-y divide-dashed divide-line">
+            {ranked.map(({ goal, derived }) => (
+              <GoalRow
+                key={goal.id}
+                goal={goal}
+                derived={derived}
+                onEdit={() => setEditingId(goal.id)}
+                onDelete={() => setPendingDelete(goal)}
+              />
+            ))}
+          </ul>
+          <Note>
+            The bar is where you are; the upright marker is where the plan
+            expects you today. The gap between them is the whole read.
+          </Note>
+        </>
       )}
 
       {pendingDelete && (
@@ -122,73 +144,44 @@ export function GoalSection({ today }: { today: string }) {
           }}
         />
       )}
-    </section>
+    </Card>
   );
 }
 
-function ViewToggle({
-  value,
-  onChange,
-}: {
-  value: GoalView;
-  onChange: (v: GoalView) => void;
-}) {
+function GoalLink({ goal }: { goal: Goal }) {
   return (
-    <div className={styles.viewToggle} role="group" aria-label="Goal layout">
-      <button
-        type="button"
-        className={styles.viewBtn}
-        data-active={value === "bar"}
-        aria-pressed={value === "bar"}
-        onClick={() => onChange("bar")}
-      >
-        <Icon name="bars" size={16} />
-        <span className="visually-hidden">Pace bars</span>
-      </button>
-      <button
-        type="button"
-        className={styles.viewBtn}
-        data-active={value === "ring"}
-        aria-pressed={value === "ring"}
-        onClick={() => onChange("ring")}
-      >
-        <Icon name="ring" size={16} />
-        <span className="visually-hidden">Rings</span>
-      </button>
-    </div>
+    <Link
+      href={`/goals/${goal.id}`}
+      className="group inline-flex items-center gap-1 text-[13.5px] font-medium text-ink hover:text-accent-700"
+    >
+      <span className="truncate">{goal.name}</span>
+      <Icon
+        name="chevronRight"
+        size={14}
+        className="shrink-0 text-ink-3 group-hover:text-accent-600"
+      />
+    </Link>
   );
 }
 
-/** The edit + delete cluster shared by both layouts. */
 function RowActions({
   goal,
   onEdit,
   onDelete,
-  className,
 }: {
   goal: Goal;
   onEdit: () => void;
   onDelete: () => void;
-  className?: string;
 }) {
   return (
-    <div className={`${styles.act} ${className ?? ""}`}>
-      <button
-        type="button"
-        className={styles.iconBtn}
-        onClick={onEdit}
-        aria-label={`Edit ${goal.name}`}
-      >
-        <Icon name="edit" size={15} />
-      </button>
-      <button
-        type="button"
-        className={styles.iconBtn}
+    <div className="flex items-center gap-0.5">
+      <IconButton name="edit" label={`Edit ${goal.name}`} onClick={onEdit} />
+      <IconButton
+        name="close"
+        label={`Delete ${goal.name}`}
+        size={14}
         onClick={onDelete}
-        aria-label={`Delete ${goal.name}`}
-      >
-        <Icon name="close" size={14} />
-      </button>
+      />
     </div>
   );
 }
@@ -208,48 +201,53 @@ function GoalRow({
   const copy = describeGoal(goal, derived);
 
   return (
-    <li className={styles.rowWrap}>
-      <div className={styles.row}>
-        <div className={styles.name}>
-          <h3 className={styles.title}>
-            <Link href={`/goals/${goal.id}`} className={styles.nameLink}>
-              {goal.name}
-              <Icon name="chevronRight" size={15} className={styles.nameChevron} />
-            </Link>
+    <li className="px-4 py-3.5 sm:px-5">
+      <div className="grid items-center gap-x-5 gap-y-3 lg:grid-cols-[minmax(150px,1fr)_minmax(180px,1.4fr)_minmax(150px,0.9fr)_auto]">
+        <div className="min-w-0">
+          <h3 className="min-w-0">
+            <GoalLink goal={goal} />
           </h3>
-          <p className={`${styles.position} num`}>
+          <p className="mt-0.5 truncate text-[12.5px] text-ink-3 tnum">
             {formatRange(derived.current, goal.pointB, goal.unit)}
           </p>
         </div>
 
-        <div className={styles.bar}>
+        <div className="min-w-0">
           <PaceBar
             progress={derived.progress}
             plannedProgress={derived.plannedProgress}
             status={derived.status}
             label={copy.aria}
           />
-          <div className={`${styles.barMeta} num`}>
-            <span className={styles.barMetaPlan}>{copy.plan}</span>
+          <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-[11.5px] text-ink-3 tnum">
+            <span className="truncate">{copy.plan}</span>
             <span>{formatLongDate(derived.deadline)}</span>
           </div>
         </div>
 
-        <div className={styles.pace}>
-          <p className={styles.paceHead} data-tone={derived.status}>
-            <span>{copy.headline}</span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge status={derived.status} hint={copy.plan}>
+              {copy.headline}
+            </StatusBadge>
             {copy.points && (
-              <span className={`${styles.points} num`}>{copy.points}</span>
+              <span className={`text-[12.5px] tnum ${statusText(derived.status)}`}>
+                {copy.points}
+              </span>
             )}
+          </div>
+          <p className="mt-1 truncate text-[12.5px] text-ink-2 tnum">
+            {copy.detail}
           </p>
-          <p className={`${styles.detail} num`}>{copy.detail}</p>
         </div>
 
-        <RowActions goal={goal} onEdit={onEdit} onDelete={onDelete} />
+        <div className="justify-self-end">
+          <RowActions goal={goal} onEdit={onEdit} onDelete={onDelete} />
+        </div>
       </div>
 
       {goal.kind === "milestone" && goal.milestones.length > 0 && (
-        <ul className={styles.milestones}>
+        <ul className="mt-3 flex flex-wrap gap-1.5">
           {goal.milestones.map((m) => (
             <li key={m.id}>
               <TickChip
@@ -274,7 +272,7 @@ function GoalRow({
   );
 }
 
-function RingCard({
+function RingCell({
   goal,
   derived,
   onEdit,
@@ -288,38 +286,32 @@ function RingCard({
   const copy = describeGoal(goal, derived);
 
   return (
-    <li className={styles.card}>
-      <div className={styles.cardHead}>
-        <h3 className={styles.cardTitle}>
-          <Link href={`/goals/${goal.id}`} className={styles.nameLink}>
-            {goal.name}
-            <Icon name="chevronRight" size={15} className={styles.nameChevron} />
-          </Link>
+    <li className="flex flex-col bg-surface p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="min-w-0">
+          <GoalLink goal={goal} />
         </h3>
-        <RowActions
-          goal={goal}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          className={styles.cardAct}
-        />
+        <RowActions goal={goal} onEdit={onEdit} onDelete={onDelete} />
       </div>
 
-      <div className={styles.cardBody}>
+      <div className="mt-3 flex items-center gap-4">
         <Donut
           progress={derived.progress}
           plannedProgress={derived.plannedProgress}
           status={derived.status}
-          size={124}
-          caption={copy.headline}
+          size={116}
         />
-        <div className={styles.cardFigures}>
-          <span className={`${styles.bigTarget} num`}>
+        <div className="min-w-0">
+          <span className="block text-[28px] font-semibold leading-none tracking-[-0.02em] text-ink tnum">
             {formatValue(goal.pointB, goal.unit)}
           </span>
-          <span className={styles.bigTargetLabel}>target</span>
-          <p className={`${styles.cardDetail} num`} data-tone={derived.status}>
-            {copy.detail}
-          </p>
+          <span className="mt-1 block text-[11.5px] text-ink-3">target</span>
+          <div className="mt-3">
+            <StatusBadge status={derived.status} hint={copy.plan}>
+              {copy.headline}
+            </StatusBadge>
+          </div>
+          <p className="mt-1.5 text-[12.5px] text-ink-2 tnum">{copy.detail}</p>
         </div>
       </div>
     </li>

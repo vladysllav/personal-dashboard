@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef } from "react";
-import styles from "./ConfirmDialog.module.css";
+import { Button } from "./ui";
 
 /**
  * A minimal modal for irreversible actions. Focus lands on the cancel button
@@ -59,41 +59,41 @@ export function ConfirmDialog({
 
   return (
     <div
-      className={styles.backdrop}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 p-4 animate-fade-in"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
     >
       <div
         ref={panelRef}
-        className={styles.panel}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={bodyId}
+        className="w-full max-w-[420px] rounded-[14px] border border-line bg-surface p-5 shadow-pop"
       >
-        <h2 id={titleId} className={styles.title}>
+        <h2
+          id={titleId}
+          className="text-[17px] font-semibold tracking-[-0.01em] text-ink"
+        >
           {title}
         </h2>
-        <p id={bodyId} className={styles.body}>
+        <p
+          id={bodyId}
+          className="mt-2 max-w-[68ch] text-[13px] leading-relaxed text-ink-2"
+        >
           {body}
         </p>
-        <div className={styles.actions}>
-          <button
-            ref={cancelRef}
-            type="button"
-            className="btn btn-quiet"
-            onClick={onCancel}
-          >
+        <div className="mt-5 flex justify-end gap-2">
+          <Button ref={cancelRef} onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
-            type="button"
-            className={destructive ? `btn ${styles.danger}` : "btn btn-primary"}
+          </Button>
+          <Button
+            variant={destructive ? "danger" : "primary"}
             onClick={onConfirm}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

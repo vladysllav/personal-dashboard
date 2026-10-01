@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { formatLongDate, toDateKey, withDate } from "@/lib/dates";
+import { formatLongDate, formatShortDate, toDateKey, withDate } from "@/lib/dates";
 import { formatValue } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import type { Goal, GoalEntry } from "@/lib/types";
-import { Icon } from "./Icon";
-import styles from "./EntryLog.module.css";
+import { Button, Card, CardHead, Empty, IconButton, Input } from "./ui";
 
 /**
  * Every entry ever logged against a goal, newest first, each one editable in
@@ -23,22 +22,25 @@ export function EntryLog({ goal }: { goal: Goal }) {
   const entries = [...goal.entries].sort((a, b) => (a.at < b.at ? 1 : -1));
 
   return (
-    <section className={styles.section} aria-labelledby="log-history">
-      <div className={styles.head}>
-        <h2 id="log-history" className={styles.title}>
-          Log history
-        </h2>
-        {entries.length > 0 && (
-          <span className={`${styles.count} num`}>{entries.length}</span>
-        )}
-      </div>
+    <Card className="overflow-hidden" aria-labelledby="log-history">
+      <CardHead
+        id="log-history"
+        title="Log history"
+        right={
+          entries.length > 0 ? (
+            <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-[12.5px] text-ink-2 tnum">
+              {entries.length}
+            </span>
+          ) : undefined
+        }
+      />
 
       {entries.length === 0 ? (
-        <p className={styles.empty}>
+        <Empty>
           No entries yet. Everything you log against this goal shows up here.
-        </p>
+        </Empty>
       ) : (
-        <ul className={styles.list}>
+        <ul className="divide-y divide-dashed divide-line">
           {entries.map((entry) =>
             editingId === entry.id ? (
               <EditRow
@@ -58,7 +60,7 @@ export function EntryLog({ goal }: { goal: Goal }) {
           )}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -80,31 +82,29 @@ function ViewRow({
 }) {
   const { dispatch } = useStore();
 
+  const day = toDateKey(new Date(entry.at));
+
   return (
-    <li className={styles.row}>
-      <span className={`${styles.value} num`}>{formatEntry(goal, entry.value)}</span>
-      <span className={`${styles.date} num`}>
-        {formatLongDate(toDateKey(new Date(entry.at)))}
+    <li className="flex items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-5">
+      <span className="min-w-[72px] shrink-0 text-[13px] font-medium text-ink tnum sm:min-w-[104px]">
+        {formatEntry(goal, entry.value)}
       </span>
-      <div className={styles.rowActions}>
-        <button
-          type="button"
-          className={styles.iconBtn}
-          onClick={onEdit}
-          aria-label="Edit entry"
-        >
-          <Icon name="edit" size={15} />
-        </button>
-        <button
-          type="button"
-          className={styles.iconBtn}
+      {/* A date clipped to "Saturday 19 Septem…" says less than the short form
+          it had room for, so the phone gets the short form outright. */}
+      <span className="min-w-0 flex-1 text-[13px] text-ink-3 tnum">
+        <span className="sm:hidden">{formatShortDate(day)}</span>
+        <span className="hidden sm:inline">{formatLongDate(day)}</span>
+      </span>
+      <div className="flex shrink-0 items-center gap-0.5">
+        <IconButton name="edit" label="Edit entry" onClick={onEdit} />
+        <IconButton
+          name="close"
+          size={14}
+          label="Delete entry"
           onClick={() =>
             dispatch({ type: "removeEntry", goalId: goal.id, entryId: entry.id })
           }
-          aria-label="Delete entry"
-        >
-          <Icon name="close" size={14} />
-        </button>
+        />
       </div>
     </li>
   );
@@ -140,31 +140,31 @@ function EditRow({
   }
 
   return (
-    <li className={styles.row}>
-      <form className={styles.editForm} onSubmit={save}>
-        <input
-          className="input num"
-          type="number"
-          step="any"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          aria-label="Value"
-          autoFocus
-        />
-        <input
-          className="input num"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="Date"
-        />
-        <button type="submit" className="btn btn-primary">
+    <li className="bg-accent-50/60 px-4 py-2.5 sm:px-5">
+      <form className="flex flex-wrap items-center gap-2" onSubmit={save}>
+        <div className="w-[120px]">
+          <Input
+            type="number"
+            step="any"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-label="Value"
+            autoFocus
+          />
+        </div>
+        <div className="w-[160px]">
+          <Input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            aria-label="Date"
+          />
+        </div>
+        <Button type="submit" variant="primary">
           Save
-        </button>
-        <button type="button" className="btn btn-quiet" onClick={onDone}>
-          Cancel
-        </button>
+        </Button>
+        <Button onClick={onDone}>Cancel</Button>
       </form>
     </li>
   );

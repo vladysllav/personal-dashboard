@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import { todayKey } from "@/lib/dates";
 import { newId, type GoalPatch } from "@/lib/store";
 import type { Goal, GoalKind, Milestone, StepUnit } from "@/lib/types";
-import styles from "./GoalSection.module.css";
+import { Alert, Button, Field, Input, Select, Textarea } from "./ui";
 
 const KIND_LABEL: Record<GoalKind, string> = {
   accumulate: "Count up — each entry adds to a total",
@@ -17,6 +17,9 @@ const KIND_LABEL: Record<GoalKind, string> = {
  * emits a patch and — for milestones — rebuilds the list while preserving which
  * ones were already ticked. `kind` is frozen while editing: it is how every
  * existing entry is interpreted, so changing it would silently reread the data.
+ *
+ * It opens inside the card it belongs to, on `surface-2`, so the row it will
+ * become stays in view instead of being replaced by a modal.
  */
 export function GoalForm({
   mode,
@@ -24,12 +27,15 @@ export function GoalForm({
   onCancel,
   onAdd,
   onEdit,
+  className = "border-b border-line bg-surface-2 p-4 sm:p-5",
 }: {
   mode: "add" | "edit";
   initial?: Goal;
   onCancel: () => void;
   onAdd?: (goal: Goal) => void;
   onEdit?: (patch: GoalPatch) => void;
+  /** The form always sits inside the card it belongs to; only the seam differs. */
+  className?: string;
 }) {
   const uid = useId();
   const [kind, setKind] = useState<GoalKind>(initial?.kind ?? "accumulate");
@@ -129,168 +135,143 @@ export function GoalForm({
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit} noValidate>
-      <div className={`field ${styles.formWide}`}>
-        <label className="label" htmlFor={`${uid}-name`}>
-          Name
-        </label>
-        <input
-          id={`${uid}-name`}
-          className="input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Emergency fund"
-          autoFocus
-        />
-      </div>
-
-      <div className={`field ${styles.formWide}`}>
-        <label className="label" htmlFor={`${uid}-kind`}>
-          How it&rsquo;s recorded
-        </label>
-        <select
-          id={`${uid}-kind`}
-          className="input"
-          value={kind}
-          disabled={isEdit}
-          onChange={(e) => setKind(e.target.value as GoalKind)}
-        >
-          {(Object.keys(KIND_LABEL) as GoalKind[]).map((k) => (
-            <option key={k} value={k}>
-              {KIND_LABEL[k]}
-            </option>
-          ))}
-        </select>
-        {isEdit && (
-          <span className={styles.fieldNote}>
-            How a goal is recorded is fixed once it holds data.
-          </span>
-        )}
-      </div>
-
-      {isMilestone ? (
-        <div className={`field ${styles.formWide}`}>
-          <label className="label" htmlFor={`${uid}-milestones`}>
-            Milestones — one per line
-          </label>
-          <textarea
-            id={`${uid}-milestones`}
-            className={`input ${styles.textarea}`}
-            value={milestoneText}
-            onChange={(e) => setMilestoneText(e.target.value)}
-            placeholder={"Draft the outline\nWrite chapter one\nSend to editor"}
+    <form className={className} onSubmit={handleSubmit} noValidate>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <Field label="Name" htmlFor={`${uid}-name`} className="sm:col-span-2">
+          <Input
+            id={`${uid}-name`}
+            size="lg"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Emergency fund"
+            autoFocus
           />
-        </div>
-      ) : (
-        <>
-          <div className="field">
-            <label className="label" htmlFor={`${uid}-unit`}>
-              Unit
-            </label>
-            <input
-              id={`${uid}-unit`}
-              className="input"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              placeholder="€, kg, km"
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor={`${uid}-a`}>
-              Start (point A)
-            </label>
-            <input
-              id={`${uid}-a`}
-              className="input num"
-              type="number"
-              step="any"
-              value={pointA}
-              onChange={(e) => setPointA(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor={`${uid}-b`}>
-              Target (point B)
-            </label>
-            <input
-              id={`${uid}-b`}
-              className="input num"
-              type="number"
-              step="any"
-              value={pointB}
-              onChange={(e) => setPointB(e.target.value)}
-              placeholder="6000"
-            />
-          </div>
-        </>
-      )}
+        </Field>
 
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-steps`}>
-          Steps
-        </label>
-        <input
-          id={`${uid}-steps`}
-          className="input num"
-          type="number"
-          min={1}
-          step={1}
-          value={totalSteps}
-          onChange={(e) => setTotalSteps(e.target.value)}
-        />
-      </div>
-
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-step-unit`}>
-          Measured by
-        </label>
-        <select
-          id={`${uid}-step-unit`}
-          className="input"
-          value={stepUnit}
-          onChange={(e) => setStepUnit(e.target.value as StepUnit)}
+        <Field
+          label="How it’s recorded"
+          htmlFor={`${uid}-kind`}
+          className="sm:col-span-2 xl:col-span-1"
+          hint={
+            isEdit ? "Fixed once the goal holds data." : undefined
+          }
         >
-          <option value="day">Days</option>
-          <option value="week">Weeks</option>
-          <option value="month">Months</option>
-        </select>
+          <Select
+            id={`${uid}-kind`}
+            size="lg"
+            value={kind}
+            disabled={isEdit}
+            onChange={(e) => setKind(e.target.value as GoalKind)}
+          >
+            {(Object.keys(KIND_LABEL) as GoalKind[]).map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABEL[k]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        {isMilestone ? (
+          <Field
+            label="Milestones — one per line"
+            htmlFor={`${uid}-milestones`}
+            className="sm:col-span-2 xl:col-span-3"
+          >
+            <Textarea
+              id={`${uid}-milestones`}
+              value={milestoneText}
+              onChange={(e) => setMilestoneText(e.target.value)}
+              placeholder={"Draft the outline\nWrite chapter one\nSend to editor"}
+            />
+          </Field>
+        ) : (
+          <>
+            <Field label="Unit" htmlFor={`${uid}-unit`}>
+              <Input
+                id={`${uid}-unit`}
+                size="lg"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="€, kg, km"
+              />
+            </Field>
+            <Field label="Start (point A)" htmlFor={`${uid}-a`}>
+              <Input
+                id={`${uid}-a`}
+                size="lg"
+                type="number"
+                step="any"
+                value={pointA}
+                onChange={(e) => setPointA(e.target.value)}
+              />
+            </Field>
+            <Field label="Target (point B)" htmlFor={`${uid}-b`}>
+              <Input
+                id={`${uid}-b`}
+                size="lg"
+                type="number"
+                step="any"
+                value={pointB}
+                onChange={(e) => setPointB(e.target.value)}
+                placeholder="6000"
+              />
+            </Field>
+          </>
+        )}
+
+        <Field label="Steps" htmlFor={`${uid}-steps`}>
+          <Input
+            id={`${uid}-steps`}
+            size="lg"
+            type="number"
+            min={1}
+            step={1}
+            value={totalSteps}
+            onChange={(e) => setTotalSteps(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Measured by" htmlFor={`${uid}-step-unit`}>
+          <Select
+            id={`${uid}-step-unit`}
+            size="lg"
+            value={stepUnit}
+            onChange={(e) => setStepUnit(e.target.value as StepUnit)}
+          >
+            <option value="day">Days</option>
+            <option value="week">Weeks</option>
+            <option value="month">Months</option>
+          </Select>
+        </Field>
+
+        <Field label="Starts" htmlFor={`${uid}-start`}>
+          <Input
+            id={`${uid}-start`}
+            size="lg"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </Field>
       </div>
 
-      <div className="field">
-        <label className="label" htmlFor={`${uid}-start`}>
-          Starts
-        </label>
-        <input
-          id={`${uid}-start`}
-          className="input num"
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-        />
-      </div>
-
-      <p className={styles.hint}>
+      <p className="mt-3 max-w-[68ch] text-[11.5px] leading-relaxed text-ink-3">
         Steps are how the goal is divided. {totalSteps || "0"}{" "}
         {stepUnit === "day" ? "days" : stepUnit === "week" ? "weeks" : "months"}{" "}
         sets both the deadline and the pace you&rsquo;ll be measured against.
       </p>
 
       {error && (
-        <p className={styles.formError} role="alert">
-          <span className={styles.formErrorMark} aria-hidden="true">
-            !
-          </span>
-          {error}
-        </p>
+        <div className="mt-3">
+          <Alert>{error}</Alert>
+        </div>
       )}
 
-      <div className={styles.formActions}>
-        <button type="button" className="btn btn-quiet" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="submit" className="btn btn-primary">
+      <div className="mt-4 flex flex-wrap justify-end gap-2">
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button type="submit" variant="primary">
           {isEdit ? "Save changes" : "Add goal"}
-        </button>
+        </Button>
       </div>
     </form>
   );

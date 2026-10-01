@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { addDays, todayKey, weekdayIndex } from "./dates";
+import { addDays, startOfWeek, todayKey, weekdayIndex } from "./dates";
 import { applyAction } from "./server/actions";
 import type { Intent, SyncAction } from "./sync";
 import type {
@@ -108,9 +108,7 @@ function reducer(state: DashboardState, action: Action): DashboardState {
       return {
         ...state,
         habits: state.habits.map((h) =>
-          h.id === action.habitId
-            ? { ...h, name: action.name, weeklyTarget: action.weeklyTarget }
-            : h,
+          h.id === action.habitId ? { ...h, ...action.patch } : h,
         ),
       };
 
@@ -287,30 +285,43 @@ export function buildSampleHabits(today: string): Habit[] {
   const habitSpecs: Array<{
     name: string;
     weeklyTarget?: number;
+    /** Weeks the commitment runs for; null is open-ended. */
+    durationWeeks: number | null;
     mark: (dateKey: string, daysAgo: number) => boolean;
   }> = [
-    // Daily, ~89% kept.
-    { name: "Утренняя рутина", mark: (_d, i) => i % 9 !== 0 },
+    // Daily, ~89% kept, open-ended — the habit with no finish line.
+    { name: "Утренняя рутина", durationWeeks: null, mark: (_d, i) => i % 9 !== 0 },
     // Gym Mon/Tue/Thu/Sat → a clean four times a week. weekdayIndex: Mon=0.
-    { name: "Зал", weeklyTarget: 4, mark: (d) => [0, 1, 3, 5].includes(weekdayIndex(d)) },
-    // Daily, ~83% kept.
-    { name: "Чтение по вечерам", mark: (_d, i) => i % 6 !== 0 },
-    // Daily, ~86% kept.
-    { name: "ИИ-внедрение", mark: (_d, i) => i % 7 !== 0 },
+    {
+      name: "Зал",
+      weeklyTarget: 4,
+      durationWeeks: 12,
+      mark: (d) => [0, 1, 3, 5].includes(weekdayIndex(d)),
+    },
+    // Daily, ~83% kept, a fixed eight-week run.
+    { name: "Чтение по вечерам", durationWeeks: 8, mark: (_d, i) => i % 6 !== 0 },
+    // Daily, ~86% kept, a fixed sixteen-week run.
+    { name: "ИИ-внедрение", durationWeeks: 16, mark: (_d, i) => i % 7 !== 0 },
   ];
 
-  return habitSpecs.map(({ name, weeklyTarget, mark }) => {
+  // Every sample habit starts on the Monday five weeks back, so the weekly
+  // chart has whole weeks to score rather than a ragged first column.
+  const start = startOfWeek(addDays(today, -HABIT_DAYS));
+
+  return habitSpecs.map(({ name, weeklyTarget, durationWeeks, mark }) => {
     const marks: string[] = [];
     for (let i = 1; i <= HABIT_DAYS; i += 1) {
       const day = addDays(today, -i);
-      if (mark(day, i)) marks.push(day);
+      if (day >= start && mark(day, i)) marks.push(day);
     }
     return {
       id: newId(),
       name,
       marks: marks.sort(),
       weeklyTarget,
-      createdAt: addDays(today, -HABIT_DAYS),
+      startDate: start,
+      durationWeeks,
+      createdAt: start,
     };
   });
 }
@@ -357,7 +368,7 @@ function makeGoal(
  * units, and goals in every pace state — so the dashboard's states are all
  * reachable without hand-editing data.
  */
-function buildSample(): DashboardState {
+export function buildSample(): DashboardState {
   const today = todayKey();
 
   const goals: Goal[] = [

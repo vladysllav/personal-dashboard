@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { STORAGE_KEY } from "@/lib/constants";
 import { importGoal } from "@/lib/server/import";
 import type { Goal } from "@/lib/types";
-import styles from "./import.module.css";
+import { PageHeader } from "@/components/AppShell";
+import { Alert, Button, Card, CardHead, Empty } from "@/components/ui";
 
 type Status =
   | { kind: "reading" }
@@ -40,69 +41,78 @@ export default function ImportPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <h1 className={styles.title}>Import a goal</h1>
-      <p className={styles.blurb}>
-        This browser still has data from before the dashboard had accounts. Pick
-        the one goal worth keeping — habits and everything else stay behind.
-      </p>
+    <>
+      <PageHeader title="Import a goal" />
 
-      {status.kind === "reading" && <p className={styles.note}>Checking…</p>}
+      <Card className="overflow-hidden">
+        <CardHead
+          title="Left over from before accounts"
+          hint="This browser still has data from before the dashboard had accounts. Pick the one goal worth keeping — habits and everything else stay behind."
+        />
 
-      {status.kind === "none" && (
-        <p className={styles.note}>
-          Nothing to import — this browser has no saved goals.
-        </p>
-      )}
+        {status.kind === "reading" && <Empty>Checking…</Empty>}
 
-      {status.kind === "done" && (
-        <div className={styles.done}>
-          <p className={styles.doneLine}>
-            Imported <strong>{status.name}</strong>.
-          </p>
-          {/* A full load, not a client route change: the dashboard's data is
-              fetched by a server layout that already rendered without it. */}
-          <a className={styles.button} href="/">
-            Go to the dashboard
-          </a>
-        </div>
-      )}
+        {status.kind === "none" && (
+          <Empty>Nothing to import — this browser has no saved goals.</Empty>
+        )}
 
-      {(status.kind === "ready" ||
-        status.kind === "saving" ||
-        status.kind === "failed") && (
-        <>
-          {status.kind === "failed" && (
-            <p className={styles.error} role="alert">
-              {status.message}
+        {status.kind === "done" && (
+          <div className="p-4 sm:p-5">
+            <p className="text-[13px] text-ink-2">
+              Imported <strong className="font-medium text-ink">{status.name}</strong>.
             </p>
-          )}
-          <ul className={styles.list}>
-            {status.goals.map((goal) => (
-              <li key={goal.id} className={styles.row}>
-                <span className={styles.goalName}>{goal.name}</span>
-                <span className={styles.meta}>
-                  {goal.entries.length}{" "}
-                  {goal.entries.length === 1 ? "entry" : "entries"}
-                  {goal.milestones.length > 0 &&
-                    ` · ${goal.milestones.length} milestones`}
-                </span>
-                <button
-                  type="button"
-                  className={styles.button}
-                  disabled={status.kind === "saving"}
-                  onClick={() => void choose(goal, status.goals)}
+            {/* A full load, not a client route change: the dashboard's data is
+                fetched by a server layout that already rendered without it. */}
+            <a
+              className="mt-3 inline-flex items-center justify-center rounded-[10px] bg-accent-600 px-3.5 py-2 text-[13.5px] font-medium text-white hover:bg-accent-700"
+              href="/"
+            >
+              Go to the dashboard
+            </a>
+          </div>
+        )}
+
+        {(status.kind === "ready" ||
+          status.kind === "saving" ||
+          status.kind === "failed") && (
+          <>
+            {status.kind === "failed" && (
+              <div className="border-b border-line bg-surface-2 p-4 sm:p-5">
+                <Alert>{status.message}</Alert>
+              </div>
+            )}
+            <ul className="divide-y divide-dashed divide-line">
+              {status.goals.map((goal) => (
+                <li
+                  key={goal.id}
+                  className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
                 >
-                  {status.kind === "saving" && status.goalId === goal.id
-                    ? "Importing…"
-                    : "Import this one"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </main>
+                  <span className="text-[13.5px] font-medium text-ink">
+                    {goal.name}
+                  </span>
+                  <span className="text-[12.5px] text-ink-3 tnum">
+                    {goal.entries.length}{" "}
+                    {goal.entries.length === 1 ? "entry" : "entries"}
+                    {goal.milestones.length > 0 &&
+                      ` · ${goal.milestones.length} milestones`}
+                  </span>
+                  <Button
+                    className="ml-auto"
+                    disabled={status.kind === "saving"}
+                    loading={status.kind === "saving" && status.goalId === goal.id}
+                    onClick={() => void choose(goal, status.goals)}
+                  >
+                    {status.kind === "saving" && status.goalId === goal.id
+                      ? "Importing…"
+                      : "Import this one"}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </Card>
+    </>
   );
 }
 

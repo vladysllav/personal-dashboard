@@ -145,6 +145,14 @@ export const habits = pgTable(
     name: text("name").notNull(),
     /** Null means daily (7×). Matches the optional field in the client model. */
     weeklyTarget: integer("weekly_target"),
+    /**
+     * Local date the commitment starts on. Nullable only for rows written
+     * before habits had a plan — `loadState` falls those back to `createdAt`,
+     * so no backfill is needed and no history is lost.
+     */
+    startDate: text("start_date"),
+    /** Weeks the commitment runs for. Null is an open-ended habit. */
+    durationWeeks: integer("duration_weeks"),
     createdAt: text("created_at").notNull(),
   },
   (t) => [index("habits_user_id_idx").on(t.userId)],

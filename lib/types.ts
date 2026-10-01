@@ -54,6 +54,19 @@ export type Habit = {
    * in successful weeks rather than consecutive days. Absent = daily (legacy).
    */
   weeklyTarget?: number;
+  /**
+   * The local date the commitment starts on. Separate from `createdAt`, which
+   * is the instant the row was made: you can start a habit on Monday having
+   * added it on Saturday, and the plan has to count from Monday.
+   */
+  startDate: string;
+  /**
+   * How many weeks the commitment runs for — the "I'll do this for 12 weeks"
+   * part. `null` is an open-ended habit: it still has a weekly cadence, but no
+   * finish line, so it is measured against what the plan asked for *so far*
+   * rather than against a whole-plan total.
+   */
+  durationWeeks: number | null;
   createdAt: string;
 };
 
