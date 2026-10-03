@@ -59,8 +59,8 @@ export function TelegramSignIn() {
         role="alert"
         className="mb-4 rounded-[10px] bg-neg-50 px-3 py-2.5 text-[13px] leading-relaxed text-neg-700"
       >
-        Telegram sign-in didn&rsquo;t go through. Your account may not be on the
-        allowlist yet — signing in with Google below works either way.
+        Telegram sign-in didn&rsquo;t go through. The server log says which
+        check failed; signing in with Google below works either way.
       </div>
     );
   }

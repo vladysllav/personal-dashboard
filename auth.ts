@@ -5,7 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
 import { accounts, sessions, users, verificationTokens } from "@/lib/db/schema";
-import { isAllowedTelegramId, verifyInitData } from "@/lib/telegram";
+import { allowedTelegramIds, inspectInitData } from "@/lib/telegram";
 
 /**
  * Who is allowed in, by Google account email. This is a personal dashboard on a
@@ -31,6 +31,20 @@ const telegramLinkEmail = (
 ).toLowerCase();
 
 /**
+ * Refusals go to the server log and nowhere else.
+ *
+ * The caller gets the same blank no whatever went wrong, because telling a
+ * stranger *which* check failed is free help for someone probing. The operator
+ * reading Vercel's logs gets the actual reason — without which a bad signature
+ * and an unlisted id look identical from the outside, and you go hunting
+ * through the wrong setting.
+ */
+function refuse(reason: string): null {
+  console.warn(`[auth][telegram] refused: ${reason}`);
+  return null;
+}
+
+/**
  * Sign in from inside Telegram.
  *
  * `authorize` is the whole gate: it runs on the server, the signature proves
@@ -44,13 +58,23 @@ const telegram = Credentials({
   credentials: { initData: { label: "initData", type: "text" } },
   async authorize(credentials) {
     const initData = credentials?.initData;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (typeof initData !== "string" || !botToken) return null;
+    const botToken = process.env.TELEGRAM_BOT_TOKEN ?? "";
 
-    const tgUser = verifyInitData(initData, botToken);
-    if (!tgUser) return null;
-    if (!isAllowedTelegramId(tgUser.id)) return null;
-    if (!telegramLinkEmail) return null;
+    if (typeof initData !== "string") return refuse("no-init-data");
+    if (!botToken) return refuse("no-bot-token-configured");
+
+    const result = inspectInitData(initData, botToken);
+    if (!result.ok) return refuse(result.reason);
+
+    const allowed = allowedTelegramIds();
+    if (allowed.length === 0) return refuse("no-allowlist-configured");
+    if (!allowed.includes(String(result.user.id))) {
+      // The id is safe to print: it is the one thing the operator needs in
+      // order to put it in the allowlist, and it is already their own.
+      return refuse(`id-not-allowed (saw ${result.user.id})`);
+    }
+
+    if (!telegramLinkEmail) return refuse("no-link-email-configured");
 
     // The row must already exist: it is created the first time you sign in
     // with Google. Creating one here would silently fork your data into a
@@ -60,7 +84,7 @@ const telegram = Credentials({
       .from(users)
       .where(eq(users.email, telegramLinkEmail))
       .limit(1);
-    if (!row) return null;
+    if (!row) return refuse(`no-user-row-for ${telegramLinkEmail}`);
 
     return { id: row.id, email: row.email, name: row.name, image: row.image };
   },

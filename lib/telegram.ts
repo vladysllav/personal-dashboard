@@ -41,36 +41,74 @@ function equalHex(a: string, b: string): boolean {
 }
 
 /**
+ * Why a payload was turned away. Written to the server log, never to the
+ * response: the person who needs it is the one reading Vercel's logs, not the
+ * one holding the rejected payload.
+ */
+export type RejectReason =
+  | "no-init-data"
+  | "no-bot-token"
+  | "unparseable"
+  | "no-hash"
+  | "bad-signature"
+  | "no-auth-date"
+  | "expired"
+  | "future-dated"
+  | "no-user"
+  | "malformed-user";
+
+export type VerifyResult =
+  | { ok: true; user: TelegramUser }
+  | { ok: false; reason: RejectReason };
+
+/**
  * Verify the signature and return the user, or null for anything suspect.
  *
- * Returning null rather than throwing is deliberate: every rejection here is a
- * failed sign-in attempt and they all mean the same thing to the caller. A
- * reason distinguishable from outside would only help someone probing it.
+ * Returning null rather than throwing is deliberate: to a caller, every
+ * rejection means the same thing — this payload does not get in. Use
+ * `inspectInitData` when you need to know which check failed.
  */
 export function verifyInitData(
   initData: string,
   botToken: string,
   now: Date = new Date(),
 ): TelegramUser | null {
-  if (!initData || !botToken) return null;
+  const result = inspectInitData(initData, botToken, now);
+  return result.ok ? result.user : null;
+}
+
+/** The same checks, with the reason kept. */
+export function inspectInitData(
+  initData: string,
+  botToken: string,
+  now: Date = new Date(),
+): VerifyResult {
+  if (!initData) return { ok: false, reason: "no-init-data" };
+  if (!botToken) return { ok: false, reason: "no-bot-token" };
 
   let params: URLSearchParams;
   try {
     params = new URLSearchParams(initData);
   } catch {
-    return null;
+    return { ok: false, reason: "unparseable" };
   }
 
   const hash = params.get("hash");
-  if (!hash) return null;
+  if (!hash) return { ok: false, reason: "no-hash" };
 
   /**
    * The signed payload is every other field as `key=value`, sorted by key and
    * joined with newlines. URLSearchParams has already percent-decoded them,
    * which is what Telegram signs.
+   *
+   * Only `hash` comes out. Telegram describes two validations and they drop
+   * different fields: a third party checking the Ed25519 `signature` removes
+   * both it and `hash`, but the bot-token HMAC here signs everything except
+   * `hash` — `signature` included. Dropping it as well rejects every payload
+   * from a current client, since Bot API 8.0 sends that field to everyone.
    */
   const dataCheckString = [...params.entries()]
-    .filter(([key]) => key !== "hash" && key !== "signature")
+    .filter(([key]) => key !== "hash")
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
@@ -81,34 +119,42 @@ export function verifyInitData(
   const secret = hmac("WebAppData", botToken);
   const expected = hmac(secret, dataCheckString).toString("hex");
 
-  if (!equalHex(hash, expected)) return null;
+  if (!equalHex(hash, expected)) return { ok: false, reason: "bad-signature" };
 
   const authDate = Number(params.get("auth_date"));
-  if (!Number.isFinite(authDate)) return null;
+  if (!Number.isFinite(authDate)) return { ok: false, reason: "no-auth-date" };
   const ageSeconds = Math.floor(now.getTime() / 1000) - authDate;
   // A future timestamp is as wrong as an ancient one: the clock it came from
   // is not one we can reason about.
-  if (ageSeconds < -60 || ageSeconds > MAX_AGE_SECONDS) return null;
+  if (ageSeconds < -60) return { ok: false, reason: "future-dated" };
+  if (ageSeconds > MAX_AGE_SECONDS) return { ok: false, reason: "expired" };
 
   const rawUser = params.get("user");
-  if (!rawUser) return null;
+  if (!rawUser) return { ok: false, reason: "no-user" };
 
   try {
     const parsed = JSON.parse(rawUser) as Record<string, unknown>;
     const id = parsed.id;
     const firstName = parsed.first_name;
-    if (typeof id !== "number" || !Number.isFinite(id)) return null;
-    if (typeof firstName !== "string") return null;
+    if (typeof id !== "number" || !Number.isFinite(id)) {
+      return { ok: false, reason: "malformed-user" };
+    }
+    if (typeof firstName !== "string") {
+      return { ok: false, reason: "malformed-user" };
+    }
 
     return {
-      id,
-      firstName,
-      lastName: typeof parsed.last_name === "string" ? parsed.last_name : undefined,
-      username: typeof parsed.username === "string" ? parsed.username : undefined,
-      photoUrl: typeof parsed.photo_url === "string" ? parsed.photo_url : undefined,
+      ok: true,
+      user: {
+        id,
+        firstName,
+        lastName: typeof parsed.last_name === "string" ? parsed.last_name : undefined,
+        username: typeof parsed.username === "string" ? parsed.username : undefined,
+        photoUrl: typeof parsed.photo_url === "string" ? parsed.photo_url : undefined,
+      },
     };
   } catch {
-    return null;
+    return { ok: false, reason: "malformed-user" };
   }
 }
 
