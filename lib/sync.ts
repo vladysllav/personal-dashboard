@@ -13,7 +13,7 @@ import type {
  */
 export type HabitPatch = Pick<
   Habit,
-  "name" | "weeklyTarget" | "startDate" | "durationWeeks"
+  "name" | "weeklyTarget" | "startDate" | "durationWeeks" | "weekdays"
 >;
 
 /** Fields a user may change after creation. Identity, entries and marks are never patched here. */
@@ -57,6 +57,7 @@ export type Intent =
   | { type: "toggleHabit"; habitId: string; dateKey: string }
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }
+  | { type: "setPinnedGoals"; goalIds: string[] }
   | { type: "replace"; state: DashboardState };
 
 /**
@@ -87,4 +88,5 @@ export type SyncAction =
   | { type: "setHabitMark"; habitId: string; dateKey: string; done: boolean }
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }
+  | { type: "setPinnedGoals"; goalIds: string[] }
   | { type: "replace"; state: DashboardState };

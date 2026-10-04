@@ -8,15 +8,26 @@ import {
   milestones,
   preferences,
 } from "@/lib/db/schema";
-import type { DashboardState, Goal, Habit } from "@/lib/types";
+import type { DashboardState, Goal, Habit, Preferences } from "@/lib/types";
 
-export const DEFAULT_PREFS = { goalView: "bar" } as const;
+export const DEFAULT_PREFS: Preferences = { goalView: "bar", pinnedGoalIds: [] };
 
 export const EMPTY_STATE: DashboardState = {
   goals: [],
   habits: [],
   prefs: { ...DEFAULT_PREFS },
 };
+
+/**
+ * A comma-separated column back into a list, tolerant of null, blanks and the
+ * stray spaces a hand-edited row picks up.
+ */
+function parseIdList(raw: string | null | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
 
 /**
  * Reads one user's entire dashboard back into the shape the client reducer
@@ -98,6 +109,9 @@ export async function loadState(userId: string): Promise<DashboardState> {
       ...(row.weeklyTarget === null ? {} : { weeklyTarget: row.weeklyTarget }),
       startDate: row.startDate ?? fallbackStart(row.createdAt, marks),
       durationWeeks: row.durationWeeks,
+      weekdays: parseIdList(row.weekdays)
+        .map(Number)
+        .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7),
       marks,
     };
   });
@@ -105,7 +119,14 @@ export async function loadState(userId: string): Promise<DashboardState> {
   return {
     goals: builtGoals,
     habits: builtHabits,
-    prefs: { goalView: prefRow[0]?.goalView ?? DEFAULT_PREFS.goalView },
+    prefs: {
+      goalView: prefRow[0]?.goalView ?? DEFAULT_PREFS.goalView,
+      // A pinned goal that has since been deleted is dropped rather than left
+      // to render as an empty ring.
+      pinnedGoalIds: parseIdList(prefRow[0]?.pinnedGoalIds)
+        .filter((id) => builtGoals.some((goal) => goal.id === id))
+        .slice(0, 2),
+    },
   };
 }
 

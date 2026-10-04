@@ -24,6 +24,7 @@ export type IconName =
   | "ring"
   | "flame"
   | "trophy"
+  | "pin"
   | "signOut"
   | "spinner";
 
@@ -73,6 +74,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
       stroke="none"
       d="M12 2.4c1.2 3.6-1.2 6 .96 7.56-1.2.24-2.4-.72-2.4-2.28C8.28 9.12 6.84 11.28 6.84 13.92a5.76 5.76 0 0 0 11.52 0c0-2.76-1.68-4.44-3-6-1.44-1.68-1.8-3.48-.48-5.52-2.04.72-3.6 2.4-3.84 4.56C10.44 5.28 11.04 3.6 12 2.4Z"
     />
+  ),
+  pin: (
+    <>
+      {/* A drawing pin seen from the side: head, shaft, point. Same 24 grid,
+          same single contour as the rest of the set. */}
+      <path d="M9 3.6h6M10.2 3.6v5.4l-3 3.3v1.5h9.6v-1.5l-3-3.3V3.6" />
+      <path d="M12 13.8v6.6" />
+    </>
   ),
   trophy: (
     <>

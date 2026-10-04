@@ -39,7 +39,7 @@ export function PaceBar({
         {/* Width rather than scaleX: a scaled bar squashes its own round cap
             into an ellipse, which is invisible at 8px and obvious at 14. */}
         <div
-          className="bar-fill h-full rounded-full bg-accent-500"
+          className="bar-fill h-full rounded-full border border-accent-700 bg-accent-500"
           style={{
             width: `${actual * 100}%`,
             // A cap's worth of bar, so a goal just started still reads as

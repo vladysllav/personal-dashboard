@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   // The canvas colour, so the browser chrome does not sit a shade off the page.
-  themeColor: "#eef1ef",
+  themeColor: "#f7f7f5",
   colorScheme: "light",
   // Telegram hands the page the full sheet; the insets keep content clear of
   // the notch and the home indicator.

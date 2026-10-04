@@ -7,74 +7,31 @@ import { currentValue, deriveGoal } from "@/lib/goals";
 import { useStore } from "@/lib/store";
 import type { Goal } from "@/lib/types";
 import { Icon } from "./Icon";
-import { TickChip } from "./TickChip";
 import { Alert, Button, Card, CardHead, Empty, Field, Input, Select } from "./ui";
 
 /**
- * The capture band: the two things done every single day, side by side and
- * above everything that only gets read. Logging is the product, so it gets the
- * best real estate and the shortest path.
+ * Logging a number against a goal, in one card.
+ *
+ * It lives on the Goals screen rather than on Today. Today answers "what do I
+ * do now" and a form that asks you to choose a goal first is not an answer to
+ * that; it belongs next to the goals it writes to, where the list you are
+ * reading is the list you are logging against.
  */
-export function TodayBand({ today }: { today: string }) {
-  const { state, dispatch, syncError } = useStore();
-  const marked = state.habits.filter((h) => h.marks.includes(today)).length;
-
+export function QuickLog({ today }: { today: string }) {
+  const { syncError } = useStore();
   return (
-    <section aria-labelledby="today-heading" className="animate-rise">
-      <h2 id="today-heading" className="visually-hidden">
-        Log today
-      </h2>
-
+    <>
       {syncError && (
         <div className="mb-4">
           <Alert>{syncError}</Alert>
         </div>
       )}
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHead
-            title="Habits today"
-            right={
-              state.habits.length > 0 ? (
-                <span className="text-[13px] text-ink-3 tnum">
-                  {marked} of {state.habits.length} marked
-                </span>
-              ) : undefined
-            }
-          />
-          {state.habits.length === 0 ? (
-            <Empty>Add a habit below and it will appear here every day.</Empty>
-          ) : (
-            <ul className="flex flex-wrap gap-2 p-4 sm:p-5">
-              {state.habits.map((habit) => (
-                <li key={habit.id}>
-                  <TickChip
-                    done={habit.marks.includes(today)}
-                    srSuffix="today"
-                    onClick={() =>
-                      dispatch({
-                        type: "toggleHabit",
-                        habitId: habit.id,
-                        dateKey: today,
-                      })
-                    }
-                  >
-                    {habit.name}
-                  </TickChip>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <QuickLog today={today} />
-      </div>
-    </section>
+      <QuickLogForm today={today} />
+    </>
   );
 }
 
-function QuickLog({ today }: { today: string }) {
+function QuickLogForm({ today }: { today: string }) {
   const { state, dispatch } = useStore();
   const [goalId, setGoalId] = useState<string>("");
   const [value, setValue] = useState("");

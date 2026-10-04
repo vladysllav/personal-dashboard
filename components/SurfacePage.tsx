@@ -10,6 +10,7 @@ import type { Goal } from "@/lib/types";
 import { PageHeader } from "./AppShell";
 import { GoalSection } from "./GoalSection";
 import { HabitsBoard } from "./HabitsBoard";
+import { QuickLog } from "./QuickLog";
 import { DeltaPill, StatTile } from "./ui";
 
 /**
@@ -33,6 +34,9 @@ export function SurfacePage({ surface }: { surface: "goals" | "habits" }) {
         {state.goals.length > 0 && (
           <GoalMetrics goals={state.goals} today={today} />
         )}
+        {/* Logging moved here from Today: it writes to a goal, so it belongs
+            beside the list of them. */}
+        <QuickLog today={today} />
         <GoalSection today={today} title="All goals" />
       </div>
     </>

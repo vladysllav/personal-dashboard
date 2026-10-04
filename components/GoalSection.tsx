@@ -173,8 +173,32 @@ function RowActions({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { state, dispatch } = useStore();
+  const pinned = state.prefs.pinnedGoalIds;
+  const isPinned = pinned.includes(goal.id);
+
+  /**
+   * Two slots, and pinning a third replaces the older of them rather than
+   * refusing. A control that silently does nothing when you press it is worse
+   * than one that swaps — and the one you just chose is the one you meant.
+   */
+  const togglePin = () =>
+    dispatch({
+      type: "setPinnedGoals",
+      goalIds: isPinned
+        ? pinned.filter((id) => id !== goal.id)
+        : [...pinned, goal.id].slice(-2),
+    });
+
   return (
     <div className="flex items-center gap-0.5">
+      <IconButton
+        name="pin"
+        label={isPinned ? `Unpin ${goal.name}` : `Pin ${goal.name} to Today`}
+        aria-pressed={isPinned}
+        onClick={togglePin}
+        className={isPinned ? "bg-accent-50 text-accent-700" : ""}
+      />
       <IconButton name="edit" label={`Edit ${goal.name}`} onClick={onEdit} />
       <IconButton
         name="close"

@@ -12,11 +12,13 @@ import { Icon, type IconName } from "./Icon";
  * heights.
  */
 const TONE: Record<GoalStatus, [className: string, icon: IconName]> = {
-  complete: ["bg-pos-50 text-pos-700", "check"],
-  ahead: ["bg-pos-50 text-pos-700", "arrowUp"],
+  complete: ["bg-accent-50 text-accent-700", "check"],
+  ahead: ["bg-accent-50 text-accent-700", "arrowUp"],
   "on-pace": ["bg-accent-50 text-accent-700", "arrowRight"],
-  behind: ["bg-warn-50 text-warn-700", "arrowDown"],
-  overdue: ["bg-neg-50 text-neg-700", "arrowDown"],
+  behind: ["bg-neg-50 text-neg-700", "arrowDown"],
+  // Overdue is the one state that stops being a tint you can read past. Same
+  // hue as behind, filled solid — the escalation those two states describe.
+  overdue: ["bg-neg-600 text-ink", "arrowDown"],
   "not-started": ["bg-surface-3 text-ink-2", "arrowRight"],
 };
 
@@ -49,11 +51,11 @@ export function statusText(status: GoalStatus): string {
   switch (status) {
     case "complete":
     case "ahead":
-      return "text-pos-700";
+      return "text-accent-700";
     case "on-pace":
       return "text-accent-700";
     case "behind":
-      return "text-warn-700";
+      return "text-neg-700";
     case "overdue":
       return "text-neg-700";
     default:

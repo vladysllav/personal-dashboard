@@ -15,6 +15,8 @@ const finite = z.number().finite();
 const stepUnit = z.enum(["day", "week", "month"]);
 const goalKind = z.enum(["accumulate", "measure", "milestone"]);
 const goalView = z.enum(["bar", "ring"]);
+/** ISO weekday numbers, deduped and ordered by the writer, not by the sender. */
+const weekdays = z.array(z.number().int().min(1).max(7)).max(7);
 
 const entrySchema = z.object({ id, at: timestamp, value: finite });
 
@@ -45,6 +47,7 @@ export const habitSchema = z.object({
   weeklyTarget: z.number().int().min(1).max(7).optional(),
   startDate: dateKey,
   durationWeeks,
+  weekdays,
   createdAt: timestamp,
 });
 
@@ -53,6 +56,7 @@ const habitPatchSchema = z.object({
   weeklyTarget: z.number().int().min(1).max(7).optional(),
   startDate: dateKey,
   durationWeeks,
+  weekdays,
 });
 
 const goalPatchSchema = z
@@ -72,7 +76,7 @@ const goalPatchSchema = z
 const stateSchema = z.object({
   goals: z.array(goalSchema).max(500),
   habits: z.array(habitSchema).max(500),
-  prefs: z.object({ goalView }),
+  prefs: z.object({ goalView, pinnedGoalIds: z.array(id).max(2) }),
 });
 
 export const syncActionSchema = z.discriminatedUnion("type", [
@@ -108,5 +112,6 @@ export const syncActionSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("removeHabit"), habitId: id }),
   z.object({ type: z.literal("setGoalView"), view: goalView }),
+  z.object({ type: z.literal("setPinnedGoals"), goalIds: z.array(id).max(2) }),
   z.object({ type: z.literal("replace"), state: stateSchema }),
 ]);

@@ -6,6 +6,28 @@ import type { HabitPatch } from "@/lib/sync";
 import type { Habit } from "@/lib/types";
 import { Button, Card, CardHead, Field, Input, Select } from "./ui";
 
+const WEEKDAYS: Array<{ day: number; short: string; full: string }> = [
+  { day: 1, short: "Mon", full: "Monday" },
+  { day: 2, short: "Tue", full: "Tuesday" },
+  { day: 3, short: "Wed", full: "Wednesday" },
+  { day: 4, short: "Thu", full: "Thursday" },
+  { day: 5, short: "Fri", full: "Friday" },
+  { day: 6, short: "Sat", full: "Saturday" },
+  { day: 7, short: "Sun", full: "Sunday" },
+];
+
+/** "Mon, Wed, Fri" when days were picked; "4× a week" when they were not. */
+function cadenceLabel(target: number, weekdays: number[]): string {
+  if (weekdays.length > 0) {
+    if (weekdays.length === 7) return "every day";
+    return weekdays
+      .map((d) => WEEKDAYS.find((w) => w.day === d)?.short ?? "")
+      .filter(Boolean)
+      .join(", ");
+  }
+  return target >= 7 ? "every day" : `${target}× a week`;
+}
+
 /**
  * What a habit is, stated once: a name, a cadence, a start, and a length.
  *
@@ -37,6 +59,16 @@ export function HabitForm({
   const [duration, setDuration] = useState(
     initial ? (initial.durationWeeks === null ? "" : String(initial.durationWeeks)) : "12",
   );
+  const [weekdays, setWeekdays] = useState<number[]>(initial?.weekdays ?? []);
+
+  const toggleDay = (day: number) =>
+    setWeekdays((days) =>
+      days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort(),
+    );
+
+  // Picking days *is* stating the cadence, so the two cannot disagree: choose
+  // three days and the habit is 3× a week, whatever the dropdown said.
+  const effectiveTarget = weekdays.length > 0 ? weekdays.length : target;
 
   const trimmed = name.trim();
   // An empty field is the open-ended answer, not a missing one. Anything that
@@ -47,7 +79,7 @@ export function HabitForm({
     duration.trim() === "" || !Number.isFinite(parsed) || parsed < 1
       ? null
       : Math.min(520, Math.floor(parsed));
-  const totalTarget = weeks === null ? null : weeks * target;
+  const totalTarget = weeks === null ? null : weeks * effectiveTarget;
   const endDate = weeks === null ? null : addDays(startDate, weeks * 7 - 1);
 
   return (
@@ -65,9 +97,10 @@ export function HabitForm({
             name: trimmed,
             // The client model omits the field for daily habits rather than
             // storing 7 — `habitTarget` reads a missing value as daily.
-            weeklyTarget: target >= 7 ? undefined : target,
+            weeklyTarget: effectiveTarget >= 7 ? undefined : effectiveTarget,
             startDate,
             durationWeeks: weeks,
+            weekdays,
           });
         }}
       >
@@ -134,10 +167,52 @@ export function HabitForm({
           </Field>
         </div>
 
+        {/* Fixed days, optional. A quota says how many times a week; this says
+            which ones, and only then can a reminder claim "today". */}
+        <fieldset className="mt-4">
+          <legend className="text-[11.5px] text-ink-3">
+            On set days{" "}
+            <span className="text-ink-3">
+              — optional. Leave blank to keep it a weekly quota.
+            </span>
+          </legend>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {WEEKDAYS.map(({ day, short, full }) => {
+              const on = weekdays.includes(day);
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={full}
+                  onClick={() => toggleDay(day)}
+                  className={
+                    "min-w-[44px] rounded-[var(--radius-control)] px-3 py-2 text-[13px] " +
+                    (on
+                      ? "border border-accent-700 bg-accent-600 font-medium text-ink"
+                      : "border border-line bg-surface text-ink-2 hover:border-line-strong hover:text-ink")
+                  }
+                >
+                  {short}
+                </button>
+              );
+            })}
+            {weekdays.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setWeekdays([])}
+                className="rounded-[var(--radius-control)] px-2.5 py-2 text-[13px] text-ink-3 hover:text-ink"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </fieldset>
+
         <p className="mt-3 text-[11.5px] leading-relaxed text-ink-2">
           {totalTarget === null ? (
             <>
-              Open-ended, {target >= 7 ? "every day" : `${target}× a week`} from{" "}
+              Open-ended, {cadenceLabel(effectiveTarget, weekdays)} from{" "}
               <span className="tnum">{formatShortDate(startDate)}</span>. Measured
               against what the plan asks for so far.
             </>
@@ -145,7 +220,7 @@ export function HabitForm({
             <>
               That&rsquo;s{" "}
               <span className="font-medium text-ink tnum">{totalTarget} days</span>{" "}
-              to hit — {target >= 7 ? "every day" : `${target}× a week`} for {weeks}{" "}
+              to hit — {cadenceLabel(effectiveTarget, weekdays)} for {weeks}{" "}
               {weeks === 1 ? "week" : "weeks"}, ending{" "}
               <span className="tnum">{formatShortDate(endDate!)}</span>.
             </>

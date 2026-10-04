@@ -45,7 +45,7 @@ export function TickChip({
         className={
           "inline-flex shrink-0 items-center justify-center rounded-full border " +
           (done
-            ? "border-accent-600 bg-accent-600 text-white"
+            ? "border-accent-700 bg-accent-600 text-ink"
             : "border-line-strong")
         }
       >

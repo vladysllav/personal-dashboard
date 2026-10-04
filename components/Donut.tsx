@@ -76,6 +76,23 @@ export function Donut({
           strokeWidth={STROKE}
           stroke="var(--color-surface-3)"
         />
+        {/* The arc is drawn twice: a slightly wider pass in the edge colour,
+            then the yellow inside it. Yellow is 1.28:1 against its own track
+            and never reaches 3:1 against any grey, so on its own the arc has
+            no visible boundary — the rim is what makes it a shape. */}
+        <circle
+          className="arc-grow"
+          cx="50"
+          cy="50"
+          r={R}
+          fill="none"
+          strokeWidth={STROKE + 2}
+          strokeLinecap="round"
+          stroke="var(--color-accent-700)"
+          opacity={0.9}
+          strokeDasharray={C}
+          strokeDashoffset={C - actual * C}
+        />
         <circle
           className="arc-grow"
           cx="50"

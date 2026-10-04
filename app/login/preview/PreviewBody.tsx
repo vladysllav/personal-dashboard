@@ -13,6 +13,10 @@ function Body() {
   const view = params.get("view") ?? "dashboard";
   const goalIndex = Number(params.get("goal") ?? 0);
   const state = buildSample();
+  // The harness pins the first two goals and supplies a stand-in account, so
+  // the rings and the profile row are reviewable without a signed-in session.
+  const pins = Number(params.get("pins") ?? 2);
+  state.prefs.pinnedGoalIds = state.goals.slice(0, pins).map((g) => g.id);
   return (
     <StoreProvider initialState={state}>
       <AppShell account={null}>
@@ -23,7 +27,7 @@ function Body() {
         ) : view === "detail" ? (
           <GoalDetail goalId={state.goals[goalIndex]!.id} />
         ) : (
-          <Dashboard />
+          <Dashboard account={{ name: "Vladyslav Ushakov", image: null, email: "you@example.com" }} />
         )}
       </AppShell>
     </StoreProvider>

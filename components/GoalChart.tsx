@@ -411,7 +411,7 @@ function CumulativeLayer({
       />
 
       {areaPath && (
-        <path d={areaPath} fill="var(--color-accent-500)" fillOpacity={0.1} />
+        <path d={areaPath} fill="var(--color-accent-500)" fillOpacity={0.3} />
       )}
       {done.length > 1 && (
         <polyline
@@ -428,7 +428,7 @@ function CumulativeLayer({
           cx={x(last.step)}
           cy={y(last.cumulative)}
           r={4.5}
-          fill="var(--color-accent-600)"
+          fill="var(--color-accent-700)"
           stroke="var(--color-surface)"
           strokeWidth={2}
         />
@@ -498,7 +498,9 @@ function StepLayer({
               width={barWidth}
               height={h}
               rx={2}
-              fill="var(--color-s1)"
+              fill="var(--color-accent-500)"
+              stroke="var(--color-accent-700)"
+              strokeWidth={1}
             />
           );
         })
@@ -520,7 +522,7 @@ function StepLayer({
               cx={x(p.step)}
               cy={y(p.stepValue as number)}
               r={3.5}
-              fill="var(--color-accent-600)"
+              fill="var(--color-accent-700)"
               stroke="var(--color-surface)"
               strokeWidth={1.5}
             />

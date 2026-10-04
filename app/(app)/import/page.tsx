@@ -64,7 +64,7 @@ export default function ImportPage() {
             {/* A full load, not a client route change: the dashboard's data is
                 fetched by a server layout that already rendered without it. */}
             <a
-              className="mt-3 inline-flex items-center justify-center rounded-[10px] bg-accent-600 px-3.5 py-2 text-[13.5px] font-medium text-white hover:bg-accent-700"
+              className="mt-3 inline-flex items-center justify-center rounded-[10px] border border-accent-700 bg-accent-600 px-3.5 py-2 text-[13.5px] font-medium text-ink hover:bg-accent-pressed"
               href="/"
             >
               Go to the dashboard

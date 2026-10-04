@@ -37,6 +37,17 @@ export async function insertGoal(tx: Tx, userId: string, goal: Goal): Promise<vo
 }
 
 /** Writes a habit and its marks. Caller supplies the transaction. */
+/**
+ * Weekdays to a column. Sorted and deduped on the way in, so the stored string
+ * is canonical whatever order the form collected the checkboxes in, and an
+ * empty selection is null rather than "" — one way to say "no fixed days".
+ */
+export function serializeWeekdays(days: number[] | undefined): string | null {
+  if (!days || days.length === 0) return null;
+  const clean = [...new Set(days)].filter((d) => d >= 1 && d <= 7).sort();
+  return clean.length ? clean.join(",") : null;
+}
+
 export async function insertHabit(tx: Tx, userId: string, habit: Habit): Promise<void> {
   await tx.insert(habits).values({
     id: habit.id,
@@ -45,6 +56,7 @@ export async function insertHabit(tx: Tx, userId: string, habit: Habit): Promise
     weeklyTarget: habit.weeklyTarget ?? null,
     startDate: habit.startDate,
     durationWeeks: habit.durationWeeks,
+    weekdays: serializeWeekdays(habit.weekdays),
     createdAt: habit.createdAt,
   });
 

@@ -32,7 +32,7 @@ export default async function LoginPage({
 
         <span
           aria-hidden="true"
-          className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-white"
+          className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-ink"
         >
           <Icon name="target" size={20} />
         </span>

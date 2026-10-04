@@ -71,7 +71,7 @@ function Logo() {
     <span className="inline-flex items-center gap-2">
       <span
         aria-hidden="true"
-        className="inline-flex size-[30px] items-center justify-center rounded-[var(--radius-input)] bg-accent-600 text-white"
+        className="inline-flex size-[30px] items-center justify-center rounded-[var(--radius-input)] bg-accent-600 text-ink"
       >
         <Icon name="target" size={17} />
       </span>

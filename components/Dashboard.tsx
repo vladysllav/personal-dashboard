@@ -1,19 +1,29 @@
 "use client";
 
-import { useMemo } from "react";
 import { formatLongDate } from "@/lib/dates";
-import { deriveGoal } from "@/lib/goals";
-import { overallStats, weekOverWeek } from "@/lib/habits";
 import { useStore } from "@/lib/store";
 import { useToday } from "@/lib/useToday";
-import type { DashboardState } from "@/lib/types";
 import { PageHeader } from "./AppShell";
-import { GoalSection } from "./GoalSection";
-import { HabitSection } from "./HabitSection";
-import { TodayBand } from "./TodayBand";
-import { Button, Card, DeltaPill, StatTile } from "./ui";
+import { PinnedGoals } from "./PinnedGoals";
+import { ProfileCard } from "./ProfileCard";
+import { TodayReminders } from "./TodayReminders";
+import { Button, Card } from "./ui";
 
-export function Dashboard() {
+/**
+ * Today, in the order the day is actually used.
+ *
+ * Profile, then two pinned rings, then the list of what is due. The four
+ * summary percentages that used to open this screen are gone: "90% of plan
+ * kept" is a fact about the past that changes nothing about the next hour, and
+ * four of them in a row pushed the only actionable thing on the page below the
+ * fold. Habits are no longer ticked in their own block either — every habit due
+ * today is a row in the list, so the day is one object instead of three.
+ */
+export function Dashboard({
+  account,
+}: {
+  account?: { name?: string | null; image?: string | null; email?: string | null };
+}) {
   const { state, ready, loadSample } = useStore();
   const today = useToday();
 
@@ -34,8 +44,8 @@ export function Dashboard() {
             A goal here is a start value, a target, and the number of steps you
             have to get there. That&rsquo;s what lets the dashboard show whether
             you&rsquo;re ahead or behind the pace you set — not just a percentage
-            that always looks fine. Habits are simpler: how often, for how long,
-            and a month you tick off.
+            that always looks fine. Habits are simpler: how often, on which days,
+            and for how long.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button variant="primary" onClick={loadSample}>
@@ -49,86 +59,18 @@ export function Dashboard() {
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          <MetricRow state={state} today={today} />
-          <TodayBand today={today} />
-          <GoalSection today={today} title="Goals" />
-          <HabitSection today={today} />
+          {account && (
+            <ProfileCard
+              name={account.name}
+              image={account.image}
+              email={account.email}
+            />
+          )}
+          <PinnedGoals today={today} />
+          <TodayReminders today={today} />
         </div>
       )}
     </>
-  );
-}
-
-/**
- * The four figures the whole product exists to produce, above everything else
- * on the screen. Each is a count against its own total rather than a bare
- * number — "4" means nothing, "4 of 5" is a state.
- */
-function MetricRow({ state, today }: { state: DashboardState; today: string }) {
-  const habits = state.habits;
-  const goals = state.goals;
-
-  const overall = useMemo(() => overallStats(habits, today), [habits, today]);
-  const wow = useMemo(() => weekOverWeek(habits, today), [habits, today]);
-
-  const paced = useMemo(
-    () =>
-      goals.map((goal) => ({ goal, derived: deriveGoal(goal, today) })),
-    [goals, today],
-  );
-  const behind = paced.filter(
-    ({ derived }) => derived.status === "behind" || derived.status === "overdue",
-  );
-  const worst = [...behind].sort(
-    (a, b) => a.derived.stepsDelta - b.derived.stepsDelta,
-  )[0];
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatTile
-        label="Habits today"
-        value={habits.length ? `${overall.markedToday}/${habits.length}` : "—"}
-        caption={habits.length ? "marked so far today" : "no habits yet"}
-      />
-      <StatTile
-        label="Plan kept"
-        value={habits.length ? `${Math.round(overall.adherence * 100)}%` : "—"}
-        caption={habits.length ? "of what your habits asked" : "no habits yet"}
-        delta={
-          wow ? (
-            <DeltaPill
-              tone={wow.delta > 0.005 ? "good" : wow.delta < -0.005 ? "bad" : "flat"}
-              title="Last full week against the one before it"
-            >
-              {`${wow.delta >= 0 ? "+" : "−"}${Math.abs(Math.round(wow.delta * 100))}%`}
-            </DeltaPill>
-          ) : undefined
-        }
-      />
-      <StatTile
-        label="Goals on pace"
-        value={goals.length ? `${goals.length - behind.length}/${goals.length}` : "—"}
-        caption={goals.length ? "ahead of or level with plan" : "no goals yet"}
-      />
-      <StatTile
-        label="Needs attention"
-        value={goals.length ? String(behind.length) : "—"}
-        caption={
-          !goals.length
-            ? "no goals yet"
-            : worst
-              ? worst.goal.name
-              : "every goal on pace"
-        }
-        delta={
-          goals.length ? (
-            <DeltaPill tone={behind.length === 0 ? "good" : "bad"}>
-              {behind.length === 0 ? "clear" : "behind"}
-            </DeltaPill>
-          ) : undefined
-        }
-      />
-    </div>
   );
 }
 
@@ -140,14 +82,10 @@ function DashboardSkeleton() {
   return (
     <div aria-hidden="true" className="pt-4 lg:pt-5">
       <div className="h-[32px] w-[220px] rounded-[var(--radius-input)] bg-surface-3" />
-      <div className="mt-2 h-[16px] w-[280px] rounded-[var(--radius-badge)] bg-surface-3" />
-      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-[116px] rounded-[var(--radius-card)] border border-line bg-surface"
-          />
-        ))}
+      <div className="mt-5 h-[68px] rounded-[var(--radius-card)] border border-line bg-surface" />
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+        <div className="h-[200px] rounded-[var(--radius-card)] border border-line bg-surface" />
+        <div className="h-[200px] rounded-[var(--radius-card)] border border-line bg-surface" />
       </div>
       <div className="mt-4 h-[320px] rounded-[var(--radius-card)] border border-line bg-surface" />
     </div>

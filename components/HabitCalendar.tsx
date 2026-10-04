@@ -142,8 +142,8 @@ function DayCell({
       ? outside
         // Kept, but it does not count toward this plan: the accent says "done",
         // the dashed edge and the lighter step say "not part of the target".
-        ? "border border-dashed border-accent-400 bg-accent-100 font-medium text-accent-700 hover:bg-accent-200"
-        : "bg-accent-500 font-medium text-white hover:bg-accent-600"
+        ? "border border-dashed border-accent-700 bg-accent-100 font-medium text-accent-700 hover:bg-accent-200"
+        : "border border-accent-700 bg-accent-500 font-medium text-ink hover:bg-accent-pressed"
       : "bg-surface-3 text-ink-2 hover:bg-line-strong hover:text-ink";
 
   // The today ring is drawn inside the tile so it never nudges the grid.

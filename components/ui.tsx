@@ -96,15 +96,15 @@ const BUTTON_BASE =
  */
 const BUTTON_VARIANT: Record<string, string> = {
   primary:
-    "bg-accent-600 text-white px-3.5 py-2 hover:bg-accent-700 enabled:active:bg-accent-700 " +
-    "disabled:bg-surface-3 disabled:text-ink-3",
+    "border border-accent-700 bg-accent-600 text-ink px-3.5 py-2 hover:bg-accent-pressed " +
+    "enabled:active:bg-accent-pressed disabled:border-line disabled:bg-surface-3 disabled:text-ink-3",
   ghost:
     "border border-line bg-surface text-ink-2 px-3.5 py-2 hover:border-line-strong hover:text-ink " +
     "disabled:bg-surface-2 disabled:text-ink-3",
   quiet:
     "text-ink-2 px-2.5 py-1.5 hover:bg-surface-3 hover:text-ink disabled:text-ink-3",
   danger:
-    "bg-neg-600 text-white px-3.5 py-2 hover:bg-neg-700 enabled:active:bg-neg-700 " +
+    "bg-neg-700 text-white px-3.5 py-2 hover:bg-neg-800 enabled:active:bg-neg-800 " +
     "disabled:bg-surface-3 disabled:text-ink-3",
 };
 
@@ -404,7 +404,7 @@ export function Alert({ children }: { children: ReactNode }) {
     >
       <span
         aria-hidden="true"
-        className="mt-[1px] inline-flex size-[15px] shrink-0 items-center justify-center rounded-full bg-neg-600 text-[10px] font-semibold text-white"
+        className="mt-[1px] inline-flex size-[15px] shrink-0 items-center justify-center rounded-full bg-neg-700 text-[10px] font-semibold text-white"
       >
         !
       </span>

@@ -20,62 +20,89 @@
  * "behind plan", amber is "almost". Nothing is coloured for decoration.
  */
 @theme {
-  /* Canvas and surfaces.
+  /* Canvas, surfaces, lines.
    *
-   * The canvas steps down a shade and the cards stay pure white: the
-   * reference dashboards read as *panels resting on a surface*, and that
-   * separation is carried by the gap between canvas and card, not by a
-   * border. The border stays anyway, for the case where a card sits on a
-   * card-coloured background. */
-  --color-canvas: #eef1ef;
+   * Off-white canvas, pure white cards. The separation is carried by the gap
+   * and a hairline, not by depth: there is one plane of cards here, not a
+   * stack. */
+  --color-canvas: #f7f7f5;
   --color-surface: #ffffff;
-  --color-surface-2: #f7f9f7;
-  --color-surface-3: #eef1ef;
+  --color-surface-2: #fbfbfa;
+  --color-surface-3: #efefec;
 
-  /* Lines: hairline for rows, strong for meaningful boundaries */
-  --color-line: #e6e9e6;
-  --color-line-strong: #d5d9d6;
+  --color-line: #e4e4e0;
+  --color-line-strong: #d2d2ce;
 
-  /* Text: three levels, all three clear 4.5:1 on every surface above */
-  --color-ink: #1f2520;
-  --color-ink-2: #565d57;
-  --color-ink-3: #696f6a;
-
-  /* Accent — selection, active state, primary action */
-  --color-accent-50: #eaf8ed;
-  --color-accent-100: #d1efd8;
-  --color-accent-200: #aadfb7;
-  --color-accent-400: #59b576;
-  --color-accent-500: #3fa362;
-  --color-accent-600: #238348;
-  --color-accent-700: #1f713e;
-
-  /* Plan state */
-  --color-pos-50: #e8f7eb;
-  --color-pos-700: #1f713e;
-  --color-neg-50: #ffedea;
-  --color-neg-600: #c44037;
-  --color-neg-700: #aa3028;
-  --color-warn-50: #fef2db;
-  /* warn-500 is for arcs and lines only: warn-700 is tuned for small text and
-     reads as muddy brown when used as a stroke on white. 3.17:1. */
-  --color-warn-500: #c28426;
-  --color-warn-700: #835a13;
+  /* Text: three levels, all clearing 4.5:1 on every surface above. The darkest
+     is the palette's own black rather than a soft grey-black. */
+  --color-ink: #151313;
+  --color-ink-2: #4a4a46;
+  --color-ink-3: #6b6b66;
 
   /**
-   * Chart series — nominal categories, so the hues sit as far apart as
-   * possible instead of stepping along one scale. All ≥3:1 on white, so a line
-   * reads on its own without its label.
+   * Accent — yellow.
+   *
+   * The constraint that shapes everything here: #fccc42 is 1.52:1 on white and
+   * never reaches 3:1 against ANY grey, because its lightness sits in the
+   * middle of the grey ramp. So yellow can only ever be a fill, it can never
+   * be type or a thin line, and a yellow fill on a light surface has no
+   * visible edge of its own.
+   *
+   * Hence two tokens doing two jobs: `accent-600` fills, and `accent-700`
+   * draws the boundary that fill needs and carries any accent text (5.02:1 on
+   * white, 3.31:1 against the yellow it outlines). Text on a yellow fill is
+   * always `ink` — black on yellow is 12.2:1, white on it is 1.5:1 and
+   * illegible.
    */
-  --color-s1: #3fa362;
-  --color-s2: #2e8dd1;
-  --color-s3: #b88722;
-  --color-s4: #d76549;
-  --color-s5: #8a70b8;
+  --color-accent-50: #fff4d4;
+  --color-accent-100: #ffe9a8;
+  --color-accent-200: #fbdc80;
+  --color-accent-400: #fccc42;
+  --color-accent-500: #fccc42;
+  --color-accent-600: #fccc42;
+  --color-accent-700: #8a6b00;
+  /* Pressed and hover for a yellow fill: a darker yellow, not the edge colour,
+     which would read as a different element rather than the same one held. */
+  --color-accent-pressed: #ecb81c;
 
-  /* The neutral series — "the plan". 3.1:1 on white: grey here is a line you
-     have to see, not a background. */
-  --color-s-muted: #8e948f;
+  /**
+   * Plan state.
+   *
+   * Yellow is the accent, so yellow means "this is going as planned" — done,
+   * on pace, ahead. Coral means it is not. Behind and overdue are the same
+   * hue at two intensities: a tint you can read past, and a solid fill you
+   * cannot, which is the escalation the two states actually describe.
+   *
+   * White on coral is 3.15:1, so a solid coral fill carries black too.
+   */
+  --color-pos-50: #fff4d4;
+  --color-pos-700: #8a6b00;
+  --color-neg-50: #ffe8e2;
+  --color-neg-600: #ff5734;
+  --color-neg-700: #c2381f;
+  --color-neg-800: #a82d18;
+  --color-warn-50: #ffe8e2;
+  --color-warn-500: #ff5734;
+  --color-warn-700: #c2381f;
+
+  /* The fifth colour. Not a state — a category, for when two things on one
+     chart need telling apart and neither is good or bad. */
+  --color-violet: #be94f5;
+  --color-violet-50: #f3ebfe;
+  --color-violet-700: #6b3fa8;
+
+  /**
+   * Chart series. Each is type-and-line legible on white, which the raw
+   * palette colours are not: the swatches fill shapes, these draw them.
+   */
+  --color-s1: #8a6b00;
+  --color-s2: #6b3fa8;
+  --color-s3: #c2381f;
+  --color-s4: #151313;
+  --color-s5: #9a7800;
+
+  /* The plan line — grey you have to see, not a background. 3.2:1 on white. */
+  --color-s-muted: #8b8b85;
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -85,9 +112,9 @@
    * Deeper than before and thrown further down, because the cards now sit on a
    * darker canvas — the old 1px shadow disappeared against it and the panels
    * read as holes rather than as surfaces. */
-  --shadow-card: 0 1px 2px rgba(31, 37, 32, 0.04),
-    0 10px 24px -16px rgba(31, 37, 32, 0.18);
-  --shadow-pop: 0 18px 44px -12px rgba(31, 37, 32, 0.2), 0 2px 6px rgba(31, 37, 32, 0.05);
+  --shadow-card: 0 1px 2px rgba(21, 19, 19, 0.04),
+    0 10px 24px -16px rgba(21, 19, 19, 0.16);
+  --shadow-pop: 0 18px 44px -12px rgba(21, 19, 19, 0.2), 0 2px 6px rgba(21, 19, 19, 0.05);
 
   /* Radii. One scale, named by what wears it — see DESIGN.md "Shapes". */
   --radius-focus: 4px;
@@ -120,11 +147,11 @@ html[data-tg] body {
 
 html {
   scrollbar-color: var(--color-line-strong) transparent;
-  caret-color: var(--color-accent-600);
+  caret-color: var(--color-ink);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent-600);
+  outline: 2px solid var(--color-accent-700);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -133,7 +160,7 @@ html {
    built on a div loses the keyboard, the state and the screen reader. */
 input[type="checkbox"],
 input[type="radio"] {
-  accent-color: var(--color-accent-600);
+  accent-color: var(--color-ink);
 }
 
 /* Figures in tables line up by digit — otherwise the column drifts. */
@@ -173,7 +200,7 @@ input[type="number"]::-webkit-inner-spin-button {
   z-index: 50;
   padding: 8px 14px;
   background: var(--color-accent-600);
-  color: #fff;
+  color: var(--color-ink);
   border-radius: 10px;
   font-size: 13.5px;
   font-weight: 500;

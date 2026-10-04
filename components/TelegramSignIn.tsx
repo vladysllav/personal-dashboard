@@ -69,7 +69,7 @@ export function TelegramSignIn() {
   // takes, a sign-in screen you are not meant to use is only a distraction.
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-canvas">
-      <span className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-white">
+      <span className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-ink">
         <Icon name="target" size={20} />
       </span>
       <span className="inline-flex items-center gap-2 text-[13px] text-ink-2">

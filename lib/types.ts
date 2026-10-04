@@ -67,6 +67,16 @@ export type Habit = {
    * rather than against a whole-plan total.
    */
   durationWeeks: number | null;
+  /**
+   * The days of the week this habit is due on, as ISO weekday numbers
+   * (1 = Monday … 7 = Sunday). Empty means no fixed days: the commitment is a
+   * quota — "4× a week, whenever" — and the reminder paces it out instead.
+   *
+   * Independent of `weeklyTarget`, which stays the source of truth for how many
+   * times a week is expected; picking days simply says *which* ones, and the
+   * two are kept in step by the form.
+   */
+  weekdays: number[];
   createdAt: string;
 };
 
@@ -75,6 +85,12 @@ export type GoalView = "bar" | "ring";
 
 export type Preferences = {
   goalView: GoalView;
+  /**
+   * Goals whose rings sit at the top of Today, in order. Capped at two: the
+   * point is a glance before anything else loads, and a third ring on a phone
+   * pushes the day's actual list below the fold.
+   */
+  pinnedGoalIds: string[];
 };
 
 export type DashboardState = {

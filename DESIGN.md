@@ -2,36 +2,33 @@
 name: Personal Dashboard
 description: A light tracking dashboard where colour is pinned to the state of the plan
 colors:
-  canvas: "#eef1ef"
+  canvas: "#f7f7f5"
   surface: "#ffffff"
-  surface-2: "#f7f9f7"
-  surface-3: "#eef1ef"
-  line: "#e6e9e6"
-  line-strong: "#d5d9d6"
-  ink: "#1f2520"
-  ink-2: "#565d57"
-  ink-3: "#696f6a"
-  accent-50: "#eaf8ed"
-  accent-100: "#d1efd8"
-  accent-200: "#aadfb7"
-  accent-400: "#59b576"
-  accent-500: "#3fa362"
-  accent-600: "#238348"
-  accent-700: "#1f713e"
-  pos-50: "#e8f7eb"
-  pos-700: "#1f713e"
-  neg-50: "#ffedea"
-  neg-600: "#c44037"
-  neg-700: "#aa3028"
-  warn-50: "#fef2db"
-  warn-500: "#c28426"
-  warn-700: "#835a13"
-  s1: "#3fa362"
-  s2: "#2e8dd1"
-  s3: "#b88722"
-  s4: "#d76549"
-  s5: "#8a70b8"
-  s-muted: "#8e948f"
+  surface-2: "#fbfbfa"
+  surface-3: "#efefec"
+  line: "#e4e4e0"
+  line-strong: "#d2d2ce"
+  ink: "#151313"
+  ink-2: "#4a4a46"
+  ink-3: "#6b6b66"
+  accent-50: "#fff4d4"
+  accent-100: "#ffe9a8"
+  accent-200: "#fbdc80"
+  accent-500: "#fccc42"
+  accent-600: "#fccc42"
+  accent-700: "#8a6b00"
+  accent-pressed: "#ecb81c"
+  neg-50: "#ffe8e2"
+  neg-600: "#ff5734"
+  neg-700: "#c2381f"
+  neg-800: "#a82d18"
+  violet: "#be94f5"
+  violet-700: "#6b3fa8"
+  s1: "#8a6b00"
+  s2: "#6b3fa8"
+  s3: "#c2381f"
+  s4: "#151313"
+  s-muted: "#8b8b85"
 typography:
   page-title:
     fontFamily: "Geist, system-ui, sans-serif"
@@ -161,45 +158,53 @@ after them.
 
 ## Colors
 
-### Primary
+White is the ground, yellow is the accent, black is navigation and anything
+held or selected. Coral marks a plan that is slipping. Violet is a category,
+never a state.
 
-`accent-500` `#3fa362` — selection, a kept day, the fact line in a chart.
-`accent-600` `#238348` — the primary action and the focus ring (white text on
-it is 4.76:1). `accent-700` `#1f713e` — accent text on light (6.02:1).
+### The constraint everything else follows
 
-### Secondary
+`#fccc42` is **1.52:1 on white and never reaches 3:1 against any grey** — its
+lightness sits in the middle of the grey ramp, so there is no track, border or
+background that gives it an edge. Two consequences, and they are not
+negotiable:
 
-The status triple, used only for the state of a plan, always as a background
-and text pair: `pos-50`/`pos-700` (complete or ahead, 5.43:1),
-`warn-50`/`warn-700` (behind, 5.51:1), `neg-50`/`neg-700` (overdue, 5.87:1).
+- **Yellow is only ever a fill.** It cannot be type, and it cannot be a line.
+  Accent text and accent strokes are `accent-700` `#8a6b00` (5.02:1 on white).
+- **A yellow fill is always drawn with an edge.** `accent-700` at 1px on a
+  button or a bar, and as a slightly wider arc beneath a ring. Without it the
+  bar and its groove are the same shape.
 
-`warn-500` `#c28426` (3.17:1) — the same role for arcs and bars: `warn-700` is
-tuned for small text on light and reads as muddy brown as a stroke.
+### On a yellow fill, text is black
 
-### Tertiary
+Black on `#fccc42` is 12.2:1; white on it is 1.5:1 and illegible. The same
+holds for coral: white on `#ff5734` is 3.15:1, so a solid coral fill carries
+black, and a destructive button takes the darker `neg-700` instead.
 
-Chart series `s1`–`s5` are nominal categories, spread apart by hue, each ≥3:1
-on white. `s-muted` `#8e948f` is the plan line (3.1:1): grey here is a line you
-have to see, not a background.
+### Plan state
+
+Yellow is the accent, so yellow reads as "going to plan" — done, on pace,
+ahead, all `accent-50` / `accent-700` (4.58:1). Coral reads as not:
+
+- **behind** — `neg-50` / `neg-700`, a tint you can read past (4.61:1)
+- **overdue** — `neg-600` filled solid with black type (5.88:1)
+
+One hue at two intensities, because that is the escalation those two states
+actually describe; the arrow next to the label carries the difference for
+anyone who cannot see it.
 
 ### Neutral
 
-Canvas `canvas`, surfaces `surface` / `surface-2` / `surface-3`, lines `line`
-(table rows) and `line-strong` (meaningful boundaries), text `ink` / `ink-2` /
-`ink-3`. The chroma of the neutrals is 0.003–0.012 toward the green: the greys
-belong to this system rather than sitting next to it as somebody else's greys.
+Canvas `#f7f7f5`, cards pure white, `surface-3` for grooves and resting
+chips. Text `ink` / `ink-2` / `ink-3` clears 4.5:1 on all three (the tightest
+is `ink-3` on `surface-3` at 4.65:1).
 
-### Named Rules
+### Chart series
 
-- All three text levels hold ≥4.5:1 on all three surfaces. The tightest pair is
-  `ink-3` on `surface-3` at 4.52:1.
-- State is never carried by colour alone: a drawn arrow sits next to it (up /
-  sideways / down), and a tick chip changes shape as well as fill.
-- Grey text on a coloured background is banned — take a darker shade of the
-  same hue instead (hence the `*-50` / `*-700` pairs).
-- The consistency heatmap is six steps of one scale, because it is a sequential
-  quantity. Empty days stay on `surface-3`, so a blank month reads as blank
-  rather than as the palest green.
+The swatch colours fill shapes; they cannot draw them. `s1`–`s4` are their
+legible counterparts — `#8a6b00`, `#6b3fa8`, `#c2381f`, `#151313` — each over
+3:1 on white so a line reads without its label. `s-muted` `#8b8b85` is the
+plan line.
 
 ## Typography
 
@@ -401,7 +406,9 @@ the page assemble. Every animation collapses under
 
 ### Don't:
 
-- Don't add a second bright accent next to the meaningful green.
+- Don't set type in yellow, or draw a line in it. It is a fill.
+- Don't put a yellow fill on a light surface without its `accent-700` edge.
+- Don't put white text on yellow or on coral.
 - Don't put grey text on a coloured background.
 - Don't nest a card inside a card, and don't build the structure of a page out
   of identical cards.

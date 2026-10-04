@@ -25,7 +25,7 @@ import type {
 
 export type { GoalPatch } from "./sync";
 
-const DEFAULT_PREFS: Preferences = { goalView: "bar" };
+const DEFAULT_PREFS: Preferences = { goalView: "bar", pinnedGoalIds: [] };
 
 type Action = SyncAction | { type: "hydrate"; state: DashboardState };
 
@@ -133,6 +133,14 @@ function reducer(state: DashboardState, action: Action): DashboardState {
 
     case "setGoalView":
       return { ...state, prefs: { ...state.prefs, goalView: action.view } };
+
+    case "setPinnedGoals":
+      return {
+        ...state,
+        // Capped here as well as in the schema: the reducer is the last place
+        // the rule can be stated before it reaches the screen.
+        prefs: { ...state.prefs, pinnedGoalIds: action.goalIds.slice(0, 2) },
+      };
   }
 }
 
@@ -287,6 +295,8 @@ export function buildSampleHabits(today: string): Habit[] {
     weeklyTarget?: number;
     /** Weeks the commitment runs for; null is open-ended. */
     durationWeeks: number | null;
+    /** ISO weekdays the habit is due on; empty is a plain weekly quota. */
+    weekdays?: number[];
     mark: (dateKey: string, daysAgo: number) => boolean;
   }> = [
     // Daily, ~89% kept, open-ended — the habit with no finish line.
@@ -296,6 +306,8 @@ export function buildSampleHabits(today: string): Habit[] {
       name: "Зал",
       weeklyTarget: 4,
       durationWeeks: 12,
+      // ISO numbering here (Mon=1), weekdayIndex below is 0-based.
+      weekdays: [1, 2, 4, 6],
       mark: (d) => [0, 1, 3, 5].includes(weekdayIndex(d)),
     },
     // Daily, ~83% kept, a fixed eight-week run.
@@ -308,7 +320,7 @@ export function buildSampleHabits(today: string): Habit[] {
   // chart has whole weeks to score rather than a ragged first column.
   const start = startOfWeek(addDays(today, -HABIT_DAYS));
 
-  return habitSpecs.map(({ name, weeklyTarget, durationWeeks, mark }) => {
+  return habitSpecs.map(({ name, weeklyTarget, durationWeeks, weekdays, mark }) => {
     const marks: string[] = [];
     for (let i = 1; i <= HABIT_DAYS; i += 1) {
       const day = addDays(today, -i);
@@ -317,6 +329,7 @@ export function buildSampleHabits(today: string): Habit[] {
     return {
       id: newId(),
       name,
+      weekdays: weekdays ?? [],
       marks: marks.sort(),
       weeklyTarget,
       startDate: start,

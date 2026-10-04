@@ -85,7 +85,7 @@ export function BarChart({
                   height: `${Math.max(4, Math.round(bar.value * 100))}%`,
                   background: bar.emphasis
                     ? "var(--color-accent-600)"
-                    : "var(--color-accent-400)",
+                    : "var(--color-accent-200)",
                 }}
               />
             )}

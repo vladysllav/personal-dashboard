@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
@@ -12,7 +12,12 @@ import {
   preferences,
 } from "@/lib/db/schema";
 import { syncActionSchema } from "./validate";
-import { insertGoal, insertHabit, replaceMilestones } from "./write";
+import {
+  insertGoal,
+  insertHabit,
+  replaceMilestones,
+  serializeWeekdays,
+} from "./write";
 
 /**
  * Applies one sealed store action to the signed-in user's data.
@@ -125,6 +130,7 @@ export async function applyAction(input: unknown): Promise<void> {
           weeklyTarget: action.patch.weeklyTarget ?? null,
           startDate: action.patch.startDate,
           durationWeeks: action.patch.durationWeeks,
+          weekdays: serializeWeekdays(action.patch.weekdays),
         })
         .where(eq(habits.id, action.habitId));
       return;
@@ -168,6 +174,30 @@ export async function applyAction(input: unknown): Promise<void> {
       return;
     }
 
+    case "setPinnedGoals": {
+      // Only this user's goals can be pinned, so a crafted payload cannot make
+      // the dashboard fetch a ring for somebody else's row.
+      const owned = action.goalIds.length
+        ? await db
+            .select({ id: goals.id })
+            .from(goals)
+            .where(and(eq(goals.userId, userId), inArray(goals.id, action.goalIds)))
+        : [];
+      const ordered = action.goalIds
+        .filter((id) => owned.some((row) => row.id === id))
+        .slice(0, 2);
+      const value = ordered.length ? ordered.join(",") : null;
+
+      await db
+        .insert(preferences)
+        .values({ userId, pinnedGoalIds: value })
+        .onConflictDoUpdate({
+          target: preferences.userId,
+          set: { pinnedGoalIds: value },
+        });
+      return;
+    }
+
     case "replace": {
       // Loading the sample set is a deliberate wipe-and-fill of everything.
       await db.transaction(async (tx) => {
@@ -177,7 +207,11 @@ export async function applyAction(input: unknown): Promise<void> {
         for (const habit of action.state.habits) await insertHabit(tx, userId, habit);
         await tx
           .insert(preferences)
-          .values({ userId, goalView: action.state.prefs.goalView })
+          .values({
+            userId,
+            goalView: action.state.prefs.goalView,
+            pinnedGoalIds: action.state.prefs.pinnedGoalIds.join(",") || null,
+          })
           .onConflictDoUpdate({
             target: preferences.userId,
             set: { goalView: action.state.prefs.goalView },

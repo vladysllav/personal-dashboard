@@ -153,6 +153,13 @@ export const habits = pgTable(
     startDate: text("start_date"),
     /** Weeks the commitment runs for. Null is an open-ended habit. */
     durationWeeks: integer("duration_weeks"),
+    /**
+     * ISO weekday numbers the habit is due on, comma separated ("1,3,5").
+     * Null or empty means no fixed days — the commitment is a weekly quota.
+     * Stored as text rather than an array so the column reads the same from
+     * psql, a CSV export and the Neon console.
+     */
+    weekdays: text("weekdays"),
     createdAt: text("created_at").notNull(),
   },
   (t) => [index("habits_user_id_idx").on(t.userId)],
@@ -175,4 +182,6 @@ export const preferences = pgTable("preferences", {
     .primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   goalView: text("goal_view").$type<GoalView>().notNull().default("bar"),
+  /** Pinned goal ids, comma separated and in display order. At most two. */
+  pinnedGoalIds: text("pinned_goal_ids"),
 });

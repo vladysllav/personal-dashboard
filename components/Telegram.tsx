@@ -58,8 +58,8 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     // The product has one palette and it is light. Painting Telegram's own
     // bars to match is better than letting a dark client frame a light app.
     try {
-      app.setHeaderColor("#eef1ef");
-      app.setBackgroundColor("#eef1ef");
+      app.setHeaderColor("#f7f7f5");
+      app.setBackgroundColor("#f7f7f5");
     } catch {
       // Older clients reject colours they do not know. Not worth failing over.
     }
