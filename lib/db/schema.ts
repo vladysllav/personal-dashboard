@@ -10,7 +10,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
-import type { GoalKind, GoalView, StepUnit } from "../types";
+import type { FrequencyUnit, GoalKind, GoalView, StepUnit } from "../types";
 
 /* ---------- Auth.js tables ----------
  * Column names here are dictated by @auth/drizzle-adapter and must stay
@@ -143,7 +143,24 @@ export const habits = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     seq: serial("seq").notNull(),
     name: text("name").notNull(),
-    /** Null means daily (7×). Matches the optional field in the client model. */
+    /** What doing it means, in the user's words. Null for rows written before it existed. */
+    description: text("description"),
+    /** An emoji. Null falls back to the default when read. */
+    icon: text("icon"),
+    /** A swatch id from `lib/palette.ts`. Null falls back when read. */
+    color: text("color"),
+    /**
+     * The cadence, split across two columns: how many times, and per what.
+     * Null on both means a row written before frequencies existed — `loadState`
+     * reads `weekly_target` instead, so no backfill is needed and no history
+     * is lost.
+     */
+    freqCount: integer("freq_count"),
+    freqUnit: text("freq_unit").$type<FrequencyUnit>(),
+    /**
+     * Superseded by `freq_count` / `freq_unit`, and kept only so a row written
+     * before them still reads correctly. Never written any more.
+     */
     weeklyTarget: integer("weekly_target"),
     /**
      * Local date the commitment starts on. Nullable only for rows written
@@ -151,11 +168,15 @@ export const habits = pgTable(
      * so no backfill is needed and no history is lost.
      */
     startDate: text("start_date"),
-    /** Weeks the commitment runs for. Null is an open-ended habit. */
+    /**
+     * Dropped from the model: a habit has no finish line. The column stays
+     * because an old row still carries a value and dropping a column is a
+     * one-way move; nothing reads it.
+     */
     durationWeeks: integer("duration_weeks"),
     /**
      * ISO weekday numbers the habit is due on, comma separated ("1,3,5").
-     * Null or empty means no fixed days — the commitment is a weekly quota.
+     * Null or empty means no fixed days — the commitment is a plain quota.
      * Stored as text rather than an array so the column reads the same from
      * psql, a CSV export and the Neon console.
      */

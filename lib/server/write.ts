@@ -53,10 +53,13 @@ export async function insertHabit(tx: Tx, userId: string, habit: Habit): Promise
     id: habit.id,
     userId,
     name: habit.name,
-    weeklyTarget: habit.weeklyTarget ?? null,
+    description: habit.description,
+    icon: habit.icon,
+    color: habit.color,
+    freqCount: habit.frequency.count,
+    freqUnit: habit.frequency.unit,
     startDate: habit.startDate,
-    durationWeeks: habit.durationWeeks,
-    weekdays: serializeWeekdays(habit.weekdays),
+    weekdays: serializeWeekdays(habit.frequency.weekdays),
     createdAt: habit.createdAt,
   });
 

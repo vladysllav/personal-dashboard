@@ -1,36 +1,46 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { overallStats } from "@/lib/habits";
+import { formatLongDate } from "@/lib/dates";
+import { habitsForDay, type HabitDay } from "@/lib/habits";
+import { swatch } from "@/lib/palette";
 import { newId, useStore } from "@/lib/store";
 import type { HabitPatch } from "@/lib/sync";
 import type { Habit } from "@/lib/types";
 import { PageHeader } from "./AppShell";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { HabitCard } from "./HabitCard";
 import { HabitForm } from "./HabitForm";
-import { HabitOverview } from "./HabitOverview";
 import { Icon } from "./Icon";
+import { WeekStrip } from "./WeekStrip";
 import { Button, Card, CardHead, Empty } from "./ui";
 
 /**
- * The habits screen: the whole picture first, then one card per habit.
+ * The habits screen: a week, and what that day asks of you.
  *
- * That order is deliberate. The aggregate answers "how am I doing" in a second
- * and needs no reading; the cards below are where you act, and each is a month
- * you can tick without leaving the page.
+ * It used to open with the whole picture — a ring, two bar charts, a
+ * percentage in the subtitle — and the thing you actually came to do was
+ * below all of it. Those readings are not wrong, they are just not the
+ * question you open this screen with at eight in the morning; they now live
+ * one tap away behind the chart icon, and what is left here is a day you can
+ * finish.
  */
 export function HabitsBoard({ today }: { today: string }) {
   const { state, dispatch } = useStore();
   const habits = state.habits;
 
+  const [selected, setSelected] = useState(today);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Habit | null>(null);
 
-  const overall = useMemo(() => overallStats(habits, today), [habits, today]);
+  const items = useMemo(() => habitsForDay(habits, selected), [habits, selected]);
   const editing = editingId ? habits.find((h) => h.id === editingId) ?? null : null;
-  const formOpen = adding || editing !== null;
+
+  // The future is not a thing you can have done yet, so its cards are shown
+  // but not tickable — the same rule the month calendar has always had.
+  const locked = selected > today;
+  const done = items.filter((item) => item.day.status === "done").length;
 
   const closeForm = () => {
     setAdding(false);
@@ -57,70 +67,110 @@ export function HabitsBoard({ today }: { today: string }) {
   return (
     <>
       <PageHeader
-        title="Habits"
-        subtitle={
-          habits.length > 0
-            ? `${overall.markedToday} of ${habits.length} marked today · ${Math.round(
-                overall.adherence * 100,
-              )}% of the plan kept so far`
-            : undefined
+        title={
+          // The charts sit *beside* the title rather than over in the controls:
+          // they are the other half of this screen, not a thing you do to it.
+          <span className="flex items-center gap-2.5">
+            Habits
+            <Link
+              href="/habits/stats"
+              aria-label="Statistics"
+              title="Statistics"
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-3 text-ink-2 hover:bg-line hover:text-ink"
+            >
+              <Icon name="chart" size={16} />
+            </Link>
+          </span>
         }
         actions={
-          !formOpen ? (
-            <Button icon={<Icon name="plus" size={15} />} onClick={() => setAdding(true)}>
-              Add habit
-            </Button>
-          ) : undefined
+          <Button icon={<Icon name="plus" size={15} />} onClick={() => setAdding(true)}>
+            Add habit
+          </Button>
         }
       />
 
       <div className="flex flex-col gap-4">
-        {formOpen && (
-          <HabitForm
-            key={editing?.id ?? "new"}
-            mode={editing ? "edit" : "add"}
-            today={today}
-            initial={editing ?? undefined}
-            onCancel={closeForm}
-            onSubmit={submit}
-          />
-        )}
-
         {habits.length === 0 ? (
-          !adding && (
-            <Card>
-              <CardHead title="Nothing tracked yet" />
-              <Empty>
-                A habit here is a commitment with a shape: how often, and for how
-                long. &ldquo;Gym, 4× a week, for 12 weeks&rdquo; is 48 sessions —
-                a total you can watch fill up, rather than a tick that only ever
-                tells you about today.
-              </Empty>
-              <div className="border-t border-line px-4 py-3 sm:px-5">
-                <Button onClick={() => dispatch({ type: "seedSampleHabits" })}>
-                  Load sample habits
-                </Button>
-              </div>
-            </Card>
-          )
+          <Card>
+            <CardHead title="Nothing tracked yet" />
+            <Empty>
+              A habit here is a cadence and nothing else: how often, on which
+              days. Give it an icon and a colour and the day becomes a handful
+              of cards you tick, rather than a list you read.
+            </Empty>
+            <div className="border-t border-line px-4 py-3 sm:px-5">
+              <Button onClick={() => dispatch({ type: "seedSampleHabits" })}>
+                Load sample habits
+              </Button>
+            </div>
+          </Card>
         ) : (
           <>
-            <HabitOverview habits={habits} today={today} />
+            <WeekStrip
+              habits={habits}
+              selected={selected}
+              today={today}
+              onSelect={setSelected}
+            />
 
-            <ul className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {habits.map((habit) => (
-                <HabitCard
-                  key={habit.id}
-                  habit={habit}
-                  today={today}
-                  onEdit={() => setEditingId(habit.id)}
-                  onDelete={() => setPendingDelete(habit)}
-                />
-              ))}
-            </ul>
+            <section aria-labelledby="day-heading" className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h2 id="day-heading" className="text-[13.5px] font-medium text-ink">
+                  {selected === today ? "Today" : formatLongDate(selected)}
+                </h2>
+                {items.length > 0 && (
+                  <span className="text-[12.5px] text-ink-3 tnum">
+                    {done} of {items.length} done
+                  </span>
+                )}
+              </div>
+
+              {items.length === 0 ? (
+                <Card>
+                  <Empty>
+                    Nothing is due on this day. A habit on set days rests on the
+                    others, and a weekly quota drops off the list once it has
+                    been met.
+                  </Empty>
+                </Card>
+              ) : (
+                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {items.map(({ habit, day }) => (
+                    <HabitTile
+                      key={habit.id}
+                      habit={habit}
+                      day={day}
+                      locked={locked}
+                      onToggle={() =>
+                        dispatch({
+                          type: "toggleHabit",
+                          habitId: habit.id,
+                          dateKey: selected,
+                        })
+                      }
+                      onEdit={() => setEditingId(habit.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
           </>
         )}
       </div>
+
+      {/* Never both at once: two dialogs mean two focus traps fighting over
+          the Tab key. Cancelling the delete drops back to the form. */}
+      {(adding || editing) && !pendingDelete && (
+        <HabitForm
+          key={editing?.id ?? "new"}
+          mode={editing ? "edit" : "add"}
+          today={today}
+          initial={editing ?? undefined}
+          onCancel={closeForm}
+          onDelete={editing ? () => setPendingDelete(editing) : undefined}
+          onSubmit={submit}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog
@@ -131,9 +181,106 @@ export function HabitsBoard({ today }: { today: string }) {
           onConfirm={() => {
             dispatch({ type: "removeHabit", habitId: pendingDelete.id });
             setPendingDelete(null);
+            closeForm();
           }}
         />
       )}
     </>
+  );
+}
+
+/**
+ * One habit on one day: its icon, its name, what it means, and a ring to fill.
+ *
+ * Two targets, because there are two things to do with a habit and they are
+ * not the same size. The ring is the tick — the action you came for, at the
+ * corner your thumb is already near. The rest of the card opens the form,
+ * which is also where deleting lives: a destructive control on a card you tap
+ * twenty times a week is a mistake waiting for a Monday morning.
+ *
+ * A kept habit drops its colour entirely. Greying out is the strongest "this
+ * one is finished" available without a badge, and it leaves the colour on the
+ * cards that still want something from you.
+ */
+function HabitTile({
+  habit,
+  day,
+  locked,
+  onToggle,
+  onEdit,
+}: {
+  habit: Habit;
+  day: HabitDay;
+  locked: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+}) {
+  const done = day.status === "done";
+  const face = swatch(habit.color);
+  const detail = habit.description.trim() || day.detail;
+
+  return (
+    <li
+      // A kept card is grey by class; an outstanding one is filled by the
+      // colour the user picked, which can only arrive as a value.
+      style={done ? undefined : { backgroundColor: face.fill, color: face.fg }}
+      className={
+        "flex min-h-[116px] flex-col justify-between gap-3 rounded-[var(--radius-card)] p-4 " +
+        (done ? "bg-surface-3 text-ink-3" : "shadow-card")
+      }
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true" className="text-[24px] leading-none">
+            {habit.icon}
+          </span>
+          {/* Late is the one reading the fill cannot carry — the card's colour
+              is a label the user chose, not a state — so it is said in words. */}
+          {day.status === "overdue" && (
+            <span className="rounded-[var(--radius-badge)] bg-neg-600 px-1.5 py-0.5 text-[11px] font-medium text-ink">
+              late
+            </span>
+          )}
+        </span>
+
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={locked}
+          aria-pressed={done}
+          aria-label={`${done ? "Unmark" : "Mark"} ${habit.name}`}
+          className="-m-1.5 shrink-0 rounded-full p-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span
+            aria-hidden="true"
+            className={
+              "flex size-[26px] items-center justify-center rounded-full border-2 " +
+              (done ? "border-ink bg-ink text-surface" : "border-current opacity-70")
+            }
+          >
+            {done && <Icon name="check" size={14} />}
+          </span>
+        </button>
+      </div>
+
+      {/* The text block is the edit target. A button rather than a link: this
+          opens a dialog, it does not go anywhere. */}
+      <button
+        type="button"
+        onClick={onEdit}
+        className="min-w-0 text-left"
+        aria-label={`Edit ${habit.name}`}
+      >
+        <span
+          className={
+            "block truncate text-[15px] font-semibold tracking-[-0.01em] " +
+            (done ? "line-through" : "")
+          }
+        >
+          {habit.name}
+        </span>
+        <span className="mt-0.5 block truncate text-[12px] opacity-80">{detail}</span>
+      </button>
+    </li>
   );
 }

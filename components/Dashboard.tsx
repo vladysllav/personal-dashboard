@@ -44,8 +44,8 @@ export function Dashboard({
             A goal here is a start value, a target, and the number of steps you
             have to get there. That&rsquo;s what lets the dashboard show whether
             you&rsquo;re ahead or behind the pace you set — not just a percentage
-            that always looks fine. Habits are simpler: how often, on which days,
-            and for how long.
+            that always looks fine. Habits are simpler: how often, and on which
+            days.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button variant="primary" onClick={loadSample}>

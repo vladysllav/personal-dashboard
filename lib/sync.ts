@@ -13,7 +13,7 @@ import type {
  */
 export type HabitPatch = Pick<
   Habit,
-  "name" | "weeklyTarget" | "startDate" | "durationWeeks" | "weekdays"
+  "name" | "description" | "icon" | "color" | "frequency" | "startDate"
 >;
 
 /** Fields a user may change after creation. Identity, entries and marks are never patched here. */

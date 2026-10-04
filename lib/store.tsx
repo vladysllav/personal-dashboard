@@ -13,8 +13,10 @@ import {
 import { addDays, startOfWeek, todayKey, weekdayIndex } from "./dates";
 import { applyAction } from "./server/actions";
 import type { Intent, SyncAction } from "./sync";
+import type { HabitColor } from "./palette";
 import type {
   DashboardState,
+  Frequency,
   Goal,
   GoalKind,
   GoalView,
@@ -292,35 +294,56 @@ export function buildSampleHabits(today: string): Habit[] {
   const HABIT_DAYS = 35;
   const habitSpecs: Array<{
     name: string;
-    weeklyTarget?: number;
-    /** Weeks the commitment runs for; null is open-ended. */
-    durationWeeks: number | null;
-    /** ISO weekdays the habit is due on; empty is a plain weekly quota. */
-    weekdays?: number[];
+    description: string;
+    icon: string;
+    color: HabitColor;
+    frequency: Frequency;
     mark: (dateKey: string, daysAgo: number) => boolean;
   }> = [
-    // Daily, ~89% kept, open-ended — the habit with no finish line.
-    { name: "Утренняя рутина", durationWeeks: null, mark: (_d, i) => i % 9 !== 0 },
-    // Gym Mon/Tue/Thu/Sat → a clean four times a week. weekdayIndex: Mon=0.
+    // Daily, ~89% kept.
+    {
+      name: "Утренняя рутина",
+      description: "Вода, зарядка, душ",
+      icon: "🌞",
+      color: "yellow",
+      frequency: { count: 1, unit: "day", weekdays: [] },
+      mark: (_d, i) => i % 9 !== 0,
+    },
+    // Gym Mon/Tue/Thu/Sat → a clean four times a week, on named days.
     {
       name: "Зал",
-      weeklyTarget: 4,
-      durationWeeks: 12,
-      // ISO numbering here (Mon=1), weekdayIndex below is 0-based.
-      weekdays: [1, 2, 4, 6],
+      description: "Час силовой",
+      icon: "🏋️",
+      color: "indigo",
+      // ISO numbering here (Mon=1); weekdayIndex below is 0-based.
+      frequency: { count: 4, unit: "week", weekdays: [1, 2, 4, 6] },
       mark: (d) => [0, 1, 3, 5].includes(weekdayIndex(d)),
     },
-    // Daily, ~83% kept, a fixed eight-week run.
-    { name: "Чтение по вечерам", durationWeeks: 8, mark: (_d, i) => i % 6 !== 0 },
-    // Daily, ~86% kept, a fixed sixteen-week run.
-    { name: "ИИ-внедрение", durationWeeks: 16, mark: (_d, i) => i % 7 !== 0 },
+    // Daily, ~83% kept.
+    {
+      name: "Чтение по вечерам",
+      description: "20 страниц",
+      icon: "📚",
+      color: "green",
+      frequency: { count: 1, unit: "day", weekdays: [] },
+      mark: (_d, i) => i % 6 !== 0,
+    },
+    // A weekly quota with no fixed days — the shape the spacing rule exists for.
+    {
+      name: "ИИ-внедрение",
+      description: "Разобрать один инструмент",
+      icon: "🧠",
+      color: "pink",
+      frequency: { count: 3, unit: "week", weekdays: [] },
+      mark: (_d, i) => i % 2 === 0,
+    },
   ];
 
   // Every sample habit starts on the Monday five weeks back, so the weekly
   // chart has whole weeks to score rather than a ragged first column.
   const start = startOfWeek(addDays(today, -HABIT_DAYS));
 
-  return habitSpecs.map(({ name, weeklyTarget, durationWeeks, weekdays, mark }) => {
+  return habitSpecs.map(({ name, description, icon, color, frequency, mark }) => {
     const marks: string[] = [];
     for (let i = 1; i <= HABIT_DAYS; i += 1) {
       const day = addDays(today, -i);
@@ -329,11 +352,12 @@ export function buildSampleHabits(today: string): Habit[] {
     return {
       id: newId(),
       name,
-      weekdays: weekdays ?? [],
+      description,
+      icon,
+      color,
+      frequency,
       marks: marks.sort(),
-      weeklyTarget,
       startDate: start,
-      durationWeeks,
       createdAt: start,
     };
   });

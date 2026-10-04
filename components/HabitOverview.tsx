@@ -8,7 +8,7 @@ import {
   formatShortDate,
   weekdayIndex,
 } from "@/lib/dates";
-import { dayStats, overallStats, weekStats } from "@/lib/habits";
+import { dayStats, overallStats, overallStreaks, weekStats } from "@/lib/habits";
 import type { Habit } from "@/lib/types";
 import { BarChart, type Bar } from "./BarChart";
 import { Donut } from "./Donut";
@@ -41,6 +41,7 @@ export function HabitOverview({
   today: string;
 }) {
   const overall = useMemo(() => overallStats(habits, today), [habits, today]);
+  const streaks = useMemo(() => overallStreaks(habits, today), [habits, today]);
 
   const days = useMemo(
     () => dayStats(habits, addDays(today, -(DAYS - 1)), today),
@@ -92,7 +93,7 @@ export function HabitOverview({
           title="All habits"
           right={
             <span className="text-[11.5px] text-ink-3 tnum">
-              {overall.markedToday} of {overall.habits} marked today
+              {overall.markedToday} of {overall.dueToday} marked today
             </span>
           }
         />
@@ -115,10 +116,14 @@ export function HabitOverview({
               // A tile is no place for a fraction: the exact figure is in the note.
               unit={`of ${Math.round(overall.expected)} asked`}
             />
+            {/* The whole-board streak replaces the finished-plans count that
+                used to sit here. Habits have no finish line any more, and
+                "how many days running did I show up" is the figure that reads
+                as an achievement rather than as a balance sheet. */}
             <Metric
-              label="Goals finished"
-              value={String(overall.completed)}
-              unit={`of ${overall.planned}`}
+              label="Showing up"
+              value={String(streaks.current)}
+              unit={`day${streaks.current === 1 ? "" : "s"} running · best ${streaks.longest}`}
             />
           </dl>
         </div>

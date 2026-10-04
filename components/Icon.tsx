@@ -21,6 +21,7 @@ export type IconName =
   | "arrowDown"
   | "arrowRight"
   | "bars"
+  | "chart"
   | "ring"
   | "flame"
   | "trophy"
@@ -62,6 +63,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   arrowDown: <path d="M12 5v13.6M5.6 12.2 12 18.6l6.4-6.4" />,
   arrowRight: <path d="M5 12h13.6M12.2 5.6 18.6 12l-6.4 6.4" />,
   bars: <path d="M4 7h16M4 12h16M4 17h10" />,
+  chart: (
+    <>
+      <path d="M3.6 20.4h16.8" />
+      <path d="M7.2 20.4v-6M12 20.4V6.6M16.8 20.4v-9.6" />
+    </>
+  ),
   ring: (
     <>
       <circle cx="12" cy="12" r="7.8" />

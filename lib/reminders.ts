@@ -1,7 +1,6 @@
-import { addDays, daysBetween, startOfWeek, weekdayIndex } from "./dates";
 import { formatRate, formatValue } from "./format";
 import { deriveGoal } from "./goals";
-import { habitPlan, inPlan } from "./habits";
+import { habitDay } from "./habits";
 import type { Goal, Habit } from "./types";
 
 /**
@@ -12,6 +11,10 @@ import type { Goal, Habit } from "./types";
  * the arithmetic yourself. This turns the plan into the second answer: one list
  * of the things due today, derived rather than stored, so it can never drift
  * out of step with the habits and goals it is made of.
+ *
+ * The habit half of that question is answered by `habitDay` in `lib/habits.ts`
+ * — the same function the habits screen builds its own day list from. Goals are
+ * the part that lives here.
  */
 
 export type Urgency =
@@ -37,110 +40,24 @@ export type Reminder = {
 
 const ORDER: Record<Urgency, number> = { overdue: 0, due: 1, optional: 2, done: 3 };
 
-/** ISO weekday, 1 = Monday … 7 = Sunday. `weekdayIndex` is 0-based from Monday. */
-function isoWeekday(dateKey: string): number {
-  return weekdayIndex(dateKey) + 1;
-}
-
-const DAY_NAME = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-/** Marks inside the Monday–Sunday week that contains `todayKey`. */
-function marksThisWeek(habit: Habit, todayKey: string): string[] {
-  const from = startOfWeek(todayKey);
-  const to = addDays(from, 6);
-  return habit.marks.filter((m) => m >= from && m <= to);
-}
-
 /**
- * One habit's claim on today.
+ * One habit's claim on today, in the shape this list speaks.
  *
- * Two shapes, because a commitment can be made two ways. With fixed days the
- * answer is a lookup — Thursday or not. With a bare quota it is a question of
- * pacing, and the rule is the one a person actually uses: spread the sessions
- * out, and if the week is running out of room, stop spreading and go today.
+ * `habitDay` already decides whether a habit is late, due, merely available or
+ * handled; the only translation needed is dropping the days it has no claim on
+ * at all, which this list has no row for.
  */
 function habitReminder(habit: Habit, todayKey: string): Reminder | null {
-  const plan = habitPlan(habit);
-  if (!inPlan(plan, todayKey)) return null;
-
-  const base = { id: `habit:${habit.id}`, kind: "habit" as const, title: habit.name, habitId: habit.id };
-  const doneToday = habit.marks.includes(todayKey);
-
-  if (habit.weekdays.length > 0) {
-    const due = habit.weekdays.includes(isoWeekday(todayKey));
-    const dayList = habit.weekdays.map((d) => DAY_NAME[d - 1]).join(", ");
-    if (doneToday) return { ...base, detail: dayList, urgency: "done" };
-    if (!due) {
-      // A day off is not a task. Showing it as "optional" would put five
-      // non-items on a list whose whole job is to be short.
-      return null;
-    }
-    return { ...base, detail: `Scheduled — ${dayList}`, urgency: "due" };
-  }
-
-  const target = plan.target;
-
-  /**
-   * A daily habit has no quota to catch up on: every day stands on its own, and
-   * a missed Monday cannot be made good by doing two on Tuesday. Running it
-   * through the weekly arithmetic below made it "7 needed, 6 days left" and so
-   * permanently overdue from Tuesday morning — every daily habit red, all week,
-   * which is the fastest way to teach someone to ignore the list.
-   */
-  if (plan.isDaily) {
-    return doneToday
-      ? { ...base, detail: "Every day", urgency: "done" }
-      : { ...base, detail: "Every day", urgency: "due" };
-  }
-
-  const done = marksThisWeek(habit, todayKey).length;
-  const left = target - done;
-
-  if (doneToday) {
-    return {
-      ...base,
-      detail: left <= 0 ? "Week complete" : `${done} of ${target} this week`,
-      urgency: "done",
-    };
-  }
-
-  if (left <= 0) return null;
-
-  // Today included: Sunday is one day left, not zero.
-  const daysLeft = 7 - weekdayIndex(todayKey);
-
-  if (left >= daysLeft) {
-    return {
-      ...base,
-      detail:
-        left === daysLeft
-          ? `${left} left and ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to do ${left === 1 ? "it" : "them"}`
-          : `${left} left, only ${daysLeft} ${daysLeft === 1 ? "day" : "days"} of the week remain`,
-      urgency: left > daysLeft ? "overdue" : "due",
-    };
-  }
-
-  /**
-   * Spacing. Three times a week is a session about every other day, so a habit
-   * is due once that gap has passed since the last one. This is what makes
-   * "you were not at the gym yesterday" turn into a task today rather than a
-   * silent debt that only surfaces on Sunday.
-   */
-  const gap = Math.max(1, Math.floor(7 / target));
-  const last = [...habit.marks].filter((m) => m < todayKey).sort().pop();
-  const since = last ? daysBetween(last, todayKey) : Infinity;
-
-  if (since >= gap) {
-    return {
-      ...base,
-      detail: last
-        ? `${target}× a week · last ${since === 1 ? "yesterday" : `${since} days ago`}`
-        : `${target}× a week · not started yet`,
-      urgency: "due",
-    };
-  }
-
-  return { ...base, detail: `${done} of ${target} this week`, urgency: "optional" };
+  const { status, detail } = habitDay(habit, todayKey);
+  if (status === "off") return null;
+  return {
+    id: `habit:${habit.id}`,
+    kind: "habit",
+    title: habit.name,
+    habitId: habit.id,
+    detail: habit.description.trim() || detail,
+    urgency: status,
+  };
 }
 
 /**

@@ -156,6 +156,13 @@ The two things done every day — ticking habits and logging a number — sit at
 the top of Today in their own pair of cards. Everything that is only read comes
 after them.
 
+There is exactly one exception to "colour means something", and it is stated
+rather than smuggled in: a habit card wears a colour its owner picked. That is
+a *label*, not a reading — it says "this one is the gym", the way a cover says
+which notebook you are holding. It carries no verdict, it never changes by
+itself, and the moment a habit is kept the card drops its colour for grey. See
+"Habit cards" below.
+
 ## Colors
 
 White is the ground, yellow is the accent, black is navigation and anything
@@ -325,6 +332,27 @@ not started is neutral.
 The same grammar twice. The filled bar (or arc) is where you actually are; the
 upright marker (or notch) is where the plan expects you today. Ahead and behind
 are read from the gap between them, and only then confirmed by colour.
+
+### Habit cards
+
+One card per habit on the habits screen, filled with the swatch its owner
+chose, from the nine in `lib/palette.ts`. Near-duplicates were dropped from the
+source palettes rather than kept: two blues you cannot tell apart in a
+two-column grid are not two labels, they are one label and a mistake waiting to
+happen.
+
+- Each swatch carries its own type colour. The seven light fills take the
+  palette's black (5.8:1 at worst); indigo and black take white. There is no
+  third option, and nothing on a card is set in a tint of the fill.
+- **Kept** drops the colour entirely: `surface-3`, `ink-3`, the name struck
+  through, the ring filled with `ink`. Greying out is the strongest "finished"
+  available without a badge, and it leaves colour only on the cards that still
+  want something.
+- **Late** is the one reading the fill cannot carry, since the fill is a label
+  and not a state — so it is said in words, on a `neg-600` chip.
+- Two targets: the ring ticks it, the text block opens the form. Deleting lives
+  inside that form, never on the card — a destructive control on something
+  tapped twenty times a week is a mistake waiting for a Monday morning.
 
 ### Habit calendar
 

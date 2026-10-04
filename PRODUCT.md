@@ -23,7 +23,7 @@ Personal goal and habit tracking with real progress analytics.
 **v1 pillars:**
 
 1. **Goals & progress** — named targets with a value and a deadline, tracked toward completion. Includes financial goals (savings targets, debt paydown) as a *kind of goal* rather than a separate finance module.
-2. **Habits & streaks** — recurring daily/weekly commitments tracked for consistency. The read is a pattern over time, not a number going up.
+2. **Habits & streaks** — recurring commitments (every day, *n* times a week or a month, or on named weekdays) tracked for consistency. There is no end date: a habit is a thing you are becoming, not a project. The read is a pattern over time, not a number going up.
 
 **Deferred, but the data model should not preclude them:** full finance tracking (accounts, net worth, cash flow) and health/body metrics. Both were raised as eventual pillars.
 

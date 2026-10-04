@@ -6,6 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { Dashboard } from "@/components/Dashboard";
 import { SurfacePage } from "@/components/SurfacePage";
 import { GoalDetail } from "@/components/GoalDetail";
+import { HabitStats } from "@/components/HabitStats";
 import { StoreProvider, buildSample } from "@/lib/store";
 
 function Body() {
@@ -24,6 +25,8 @@ function Body() {
           <SurfacePage surface="goals" />
         ) : view === "habits" ? (
           <SurfacePage surface="habits" />
+        ) : view === "stats" ? (
+          <HabitStats />
         ) : view === "detail" ? (
           <GoalDetail goalId={state.goals[goalIndex]!.id} />
         ) : (

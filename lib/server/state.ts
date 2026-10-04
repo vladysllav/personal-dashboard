@@ -8,7 +8,9 @@ import {
   milestones,
   preferences,
 } from "@/lib/db/schema";
-import type { DashboardState, Goal, Habit, Preferences } from "@/lib/types";
+import { normalizeFrequency } from "@/lib/habits";
+import { DEFAULT_COLOR, DEFAULT_EMOJI, isHabitColor } from "@/lib/palette";
+import type { DashboardState, Frequency, Goal, Habit, Preferences } from "@/lib/types";
 
 export const DEFAULT_PREFS: Preferences = { goalView: "bar", pinnedGoalIds: [] };
 
@@ -101,17 +103,19 @@ export async function loadState(userId: string): Promise<DashboardState> {
 
   const builtHabits: Habit[] = habitRows.map((row) => {
     const marks = (marksByHabit.get(row.id) ?? []).map((mark) => mark.dateKey);
+    const weekdays = parseIdList(row.weekdays)
+      .map(Number)
+      .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7);
+
     return {
       id: row.id,
       name: row.name,
+      description: row.description ?? "",
+      icon: row.icon ?? DEFAULT_EMOJI,
+      color: row.color && isHabitColor(row.color) ? row.color : DEFAULT_COLOR,
+      frequency: normalizeFrequency(readFrequency(row, weekdays)),
       createdAt: row.createdAt,
-      // The client model omits the field for daily habits rather than storing 7.
-      ...(row.weeklyTarget === null ? {} : { weeklyTarget: row.weeklyTarget }),
       startDate: row.startDate ?? fallbackStart(row.createdAt, marks),
-      durationWeeks: row.durationWeeks,
-      weekdays: parseIdList(row.weekdays)
-        .map(Number)
-        .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7),
       marks,
     };
   });
@@ -148,6 +152,27 @@ function fallbackStart(createdAt: string, marks: string[]): string {
   const created = createdAt.slice(0, 10);
   const earliestMark = marks.length ? marks.reduce((a, b) => (a < b ? a : b)) : null;
   return earliestMark !== null && earliestMark < created ? earliestMark : created;
+}
+
+/**
+ * The cadence of a stored row, whichever era it was written in.
+ *
+ * `freq_count`/`freq_unit` is the model; `weekly_target` is what rows written
+ * before it carry, where a missing value meant daily and anything less than 7
+ * meant that many times a week. Reading the old shape here rather than
+ * backfilling the table keeps the migration to five `ADD COLUMN`s, which is
+ * the kind that cannot half-apply.
+ */
+function readFrequency(
+  row: { freqCount: number | null; freqUnit: Frequency["unit"] | null; weeklyTarget: number | null },
+  weekdays: number[],
+): Frequency {
+  if (row.freqUnit !== null) {
+    return { count: row.freqCount ?? 1, unit: row.freqUnit, weekdays };
+  }
+  const legacy = row.weeklyTarget;
+  if (legacy === null || legacy >= 7) return { count: 1, unit: "day", weekdays: [] };
+  return { count: legacy, unit: "week", weekdays };
 }
 
 function groupBy<T>(rows: T[], key: (row: T) => string): Map<string, T[]> {

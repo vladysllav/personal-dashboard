@@ -37,26 +37,50 @@ export const goalSchema = z.object({
   milestones: z.array(milestoneSchema).max(500),
 });
 
-/** Ten years of weeks. Far past any real commitment, short of an unbounded write. */
-const durationWeeks = z.number().int().min(1).max(520).nullable();
+/**
+ * A cadence. `count` is bounded by what a calendar month can hold, which is
+ * also the only limit that matters: everything downstream divides by it.
+ */
+const frequency = z.object({
+  count: z.number().int().min(1).max(31),
+  unit: z.enum(["day", "week", "month"]),
+  weekdays,
+});
+
+const habitColor = z.enum([
+  "yellow",
+  "green",
+  "mint",
+  "sky",
+  "indigo",
+  "violet",
+  "pink",
+  "coral",
+  "ink",
+]);
+
+/** An emoji is one or two code points; the cap is generous rather than exact. */
+const icon = z.string().max(16);
 
 export const habitSchema = z.object({
   id,
   name: label,
+  description: z.string().max(400),
+  icon,
+  color: habitColor,
+  frequency,
   marks: z.array(dateKey).max(10_000),
-  weeklyTarget: z.number().int().min(1).max(7).optional(),
   startDate: dateKey,
-  durationWeeks,
-  weekdays,
   createdAt: timestamp,
 });
 
 const habitPatchSchema = z.object({
   name: label,
-  weeklyTarget: z.number().int().min(1).max(7).optional(),
+  description: z.string().max(400),
+  icon,
+  color: habitColor,
+  frequency,
   startDate: dateKey,
-  durationWeeks,
-  weekdays,
 });
 
 const goalPatchSchema = z

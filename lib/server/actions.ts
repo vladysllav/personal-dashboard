@@ -127,10 +127,17 @@ export async function applyAction(input: unknown): Promise<void> {
         .update(habits)
         .set({
           name: action.patch.name,
-          weeklyTarget: action.patch.weeklyTarget ?? null,
+          description: action.patch.description,
+          icon: action.patch.icon,
+          color: action.patch.color,
+          freqCount: action.patch.frequency.count,
+          freqUnit: action.patch.frequency.unit,
           startDate: action.patch.startDate,
-          durationWeeks: action.patch.durationWeeks,
-          weekdays: serializeWeekdays(action.patch.weekdays),
+          weekdays: serializeWeekdays(action.patch.frequency.weekdays),
+          // Both are gone from the model. Cleared on the next edit so a row
+          // written in the old shape stops carrying a cadence nothing reads.
+          weeklyTarget: null,
+          durationWeeks: null,
         })
         .where(eq(habits.id, action.habitId));
       return;

@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { addMonths, formatShortDate, monthKey } from "@/lib/dates";
-import { deriveHabitStats } from "@/lib/habits";
+import { cadenceLabel, deriveHabitStats } from "@/lib/habits";
+import { swatch } from "@/lib/palette";
 import { useStore } from "@/lib/store";
 import type { Habit } from "@/lib/types";
 import { HabitCalendar } from "./HabitCalendar";
 import { Card, IconButton } from "./ui";
 
 /**
- * One habit, in full: what you committed to, three figures, and the month you
- * are ticking off across the width of the card.
+ * One habit's history, in full: what you committed to, three figures, and the
+ * month you are ticking off across the width of the card.
  *
  * Deliberately no pace verdict. A goal is a quantity you can be ahead of or
  * behind, and saying so is the whole point of it; a habit is a thing you either
@@ -34,30 +35,35 @@ export function HabitCard({
   const stats = deriveHabitStats(habit, today);
   const { plan } = stats;
   const marks = new Set(habit.marks);
+  const face = swatch(habit.color);
 
-  const percent = Math.round((stats.goalProgress ?? stats.adherence) * 100);
+  const percent = Math.round(stats.adherence * 100);
 
   return (
     <Card as="li" className="flex flex-col overflow-hidden">
       <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
-        <div className="min-w-0">
-          <h3 className="truncate text-[13.5px] font-medium text-ink" title={habit.name}>
-            {habit.name}
-          </h3>
-          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-ink-3">
-            <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-ink-2">
-              {plan.isDaily ? "Every day" : `${plan.target}× / week`}
-            </span>
-            <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-ink-2">
-              {plan.durationWeeks === null
-                ? "Ongoing"
-                : `${plan.durationWeeks} ${plan.durationWeeks === 1 ? "week" : "weeks"}`}
-            </span>
-            <span className="tnum">
-              from {formatShortDate(plan.startDate)}
-              {plan.endDate !== null && ` to ${formatShortDate(plan.endDate)}`}
-            </span>
-          </p>
+        <div className="flex min-w-0 items-start gap-2.5">
+          {/* The colour and the icon are how this habit is recognised on the
+              habits screen, so they come with it rather than being left behind
+              the moment you ask about its history. */}
+          <span
+            aria-hidden="true"
+            style={{ backgroundColor: face.fill }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-[var(--radius-input)] text-[17px] leading-none"
+          >
+            {habit.icon}
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-[13.5px] font-medium text-ink" title={habit.name}>
+              {habit.name}
+            </h3>
+            <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] text-ink-3">
+              <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-ink-2">
+                {cadenceLabel(plan.frequency)}
+              </span>
+              <span className="tnum">from {formatShortDate(plan.startDate)}</span>
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
           <IconButton name="edit" label={`Edit ${habit.name}`} onClick={onEdit} />
@@ -71,15 +77,11 @@ export function HabitCard({
       </header>
 
       {/* Three figures that cannot all flatter you at once: a raw count, the
-          share of the commitment done, and what is still outstanding. */}
+          share of what was asked that landed, and where this week stands. */}
       <dl className="grid grid-cols-3 gap-2 px-4 pt-4 sm:px-5">
         <Stat value={String(stats.done)} label="Days kept" />
-        <Stat value={`${percent}%`} label="Completed" />
-        {plan.totalTarget !== null ? (
-          <Stat value={String(plan.totalTarget)} label="Day goal" />
-        ) : (
-          <Stat value={`${stats.weekMarks}/${plan.target}`} label="This week" />
-        )}
+        <Stat value={`${percent}%`} label="Of the plan" />
+        <Stat value={`${stats.weekMarks}/${stats.weekTarget}`} label="This week" />
       </dl>
 
       <div className="px-4 py-4 sm:px-5">

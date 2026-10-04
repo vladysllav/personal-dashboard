@@ -15,9 +15,10 @@ import { DeltaPill, StatTile } from "./ui";
 
 /**
  * The Goals tab renders the goals section at full page scope, under a row of
- * the four figures that describe the whole set. The Habits tab is its own
- * dashboard — the plan ring, daily and weekly completion, and a month calendar
- * per habit. Each goal links through to its own detail surface at /goals/[id].
+ * the four figures that describe the whole set. The Habits tab is a day: a
+ * week strip and the cards that day asks for, with the charts a tap away at
+ * /habits/stats. Each goal links through to its own detail surface at
+ * /goals/[id].
  */
 export function SurfacePage({ surface }: { surface: "goals" | "habits" }) {
   const { state, ready } = useStore();

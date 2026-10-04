@@ -74,7 +74,10 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
     const app = webApp();
     if (!app || !inTelegram) return;
 
-    const isDetail = /^\/goals\/[^/]+$/.test(pathname);
+    // Any screen reached from another one rather than from the tab bar: a
+    // goal, and the habits statistics behind the chart icon.
+    const isDetail =
+      /^\/goals\/[^/]+$/.test(pathname) || pathname === "/habits/stats";
     const back = () => router.back();
 
     if (isDetail) {
