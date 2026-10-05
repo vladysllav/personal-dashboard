@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import { TelegramProvider } from "@/components/Telegram";
 import "./globals.css";
 
@@ -34,12 +33,18 @@ export const viewport: Viewport = {
 };
 
 /**
- * Marks the document before React hydrates, so `tg:` utilities are already
- * correct in the first paint. `initData` is only non-empty when Telegram
+ * Marks the document before anything paints, so `tg:` utilities are already
+ * correct in the first frame. `initData` is only non-empty when Telegram
  * itself opened the page, which makes it the one honest test — a user agent
  * string is not, and neither is a query parameter anybody can append.
+ *
+ * It also calls `ready()` right here rather than after hydration. Telegram
+ * keeps its own placeholder over the page until that call, so leaving it for
+ * React meant the loading screen below was streamed, painted, and never seen:
+ * what showed instead was Telegram's spinner, for as long as the whole app
+ * took to load.
  */
-const MARK_TELEGRAM = `try{if(window.Telegram&&window.Telegram.WebApp&&window.Telegram.WebApp.initData){document.documentElement.setAttribute("data-tg","1")}}catch(e){}`;
+const BOOT_TELEGRAM = `try{var a=window.Telegram&&window.Telegram.WebApp;if(a&&a.initData){document.documentElement.setAttribute("data-tg","1");try{a.setHeaderColor("#f7f7f5");a.setBackgroundColor("#f7f7f5")}catch(e){}a.ready();a.expand()}}catch(e){}`;
 
 /*
  * Deliberately thin. The store and the app chrome belong to signed-in routes
@@ -61,15 +66,11 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* beforeInteractive so the SDK and the mark below both run ahead of
-            hydration; in the App Router these belong in the root layout. */}
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-        />
-        <Script id="tg-mark" strategy="beforeInteractive">
-          {MARK_TELEGRAM}
-        </Script>
+        {/* Plain, parser-blocking tags rather than next/script: those run from
+            the Next runtime, after the bundle has loaded, which is exactly the
+            wait the early ready() exists to cut. */}
+        <script src="https://telegram.org/js/telegram-web-app.js" />
+        <script dangerouslySetInnerHTML={{ __html: BOOT_TELEGRAM }} />
       </head>
       <body className="min-h-full font-sans">
         <TelegramProvider>{children}</TelegramProvider>

@@ -309,6 +309,21 @@ export function habitsForDay(habits: Habit[], dayKey: string): HabitOnDay[] {
     });
 }
 
+/**
+ * Every habit on a given day, each with what that day asks of it — the habits
+ * board, which is a list of everything you keep rather than of what is due.
+ * Same order as `habitsForDay`, with the habits the day does not ask for last.
+ */
+export function allHabitsForDay(habits: Habit[], dayKey: string): HabitOnDay[] {
+  return habits
+    .map((habit) => ({ habit, day: habitDay(habit, dayKey) }))
+    .sort((a, b) => {
+      const byStatus = DAY_ORDER[a.day.status] - DAY_ORDER[b.day.status];
+      if (byStatus !== 0) return byStatus;
+      return a.habit.name.localeCompare(b.habit.name);
+    });
+}
+
 /* ---------- Streaks ----------
  *
  * The habit card and the overview both dropped the per-habit streak while its

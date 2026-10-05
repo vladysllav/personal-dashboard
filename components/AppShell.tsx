@@ -44,10 +44,6 @@ const NAV: Array<{
       { href: "/habits", label: "Habits", icon: "grid" },
     ],
   },
-  {
-    group: "Data",
-    items: [{ href: "/import", label: "Import", icon: "arrowDown" }],
-  },
 ];
 
 type Chrome = { account: ReactNode; openNav: () => void };

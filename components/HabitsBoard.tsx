@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatLongDate } from "@/lib/dates";
-import { habitsForDay, type HabitDay } from "@/lib/habits";
+import { allHabitsForDay, type HabitDay } from "@/lib/habits";
 import { swatch } from "@/lib/palette";
 import { newId, useStore } from "@/lib/store";
 import type { HabitPatch } from "@/lib/sync";
@@ -31,12 +31,15 @@ export function HabitsBoard({ today }: { today: string }) {
   const [selected, setSelected] = useState(today);
   const [adding, setAdding] = useState(false);
 
-  const items = useMemo(() => habitsForDay(habits, selected), [habits, selected]);
+  // Every habit, every day — the ones this day does not ask for sit last, still
+  // tickable, rather than vanishing from a list you came to see whole.
+  const items = useMemo(() => allHabitsForDay(habits, selected), [habits, selected]);
 
   // The future is not a thing you can have done yet, so its cards are shown
   // but not tickable — the same rule the month calendar has always had.
   const locked = selected > today;
   const done = items.filter((item) => item.day.status === "done").length;
+  const asked = items.filter((item) => item.day.status !== "off").length;
 
   // Editing lives on the habit's own screen, behind the pencil; this board
   // only ever creates.
@@ -107,42 +110,33 @@ export function HabitsBoard({ today }: { today: string }) {
                 <h2 id="day-heading" className="text-[13.5px] font-medium text-ink">
                   {selected === today ? "Today" : formatLongDate(selected)}
                 </h2>
-                {items.length > 0 && (
+                {asked > 0 && (
                   <span className="text-[12.5px] text-ink-3 tnum">
-                    {done} of {items.length} done
+                    {done} of {asked} done
                   </span>
                 )}
               </div>
 
-              {items.length === 0 ? (
-                <Card>
-                  <Empty>
-                    Nothing is due on this day. A habit on set days rests on the
-                    others, and a weekly quota drops off the list once it has
-                    been met.
-                  </Empty>
-                </Card>
-              ) : (
-                // Two columns from the narrowest phone up: a card is an icon, a
-                // name and a ring, and one per row left most of it empty.
-                <ul className="grid grid-cols-2 gap-3 xl:grid-cols-3">
-                  {items.map(({ habit, day }) => (
-                    <HabitTile
-                      key={habit.id}
-                      habit={habit}
-                      day={day}
-                      locked={locked}
-                      onToggle={() =>
-                        dispatch({
-                          type: "toggleHabit",
-                          habitId: habit.id,
-                          dateKey: selected,
-                        })
-                      }
-                    />
-                  ))}
-                </ul>
-              )}
+              {/* Two columns from the narrowest phone up: a card is an icon, a
+                  name and a ring, and one per row left most of it empty. */}
+              <ul className="grid grid-cols-2 gap-3 xl:grid-cols-3">
+                {items.map(({ habit, day }) => (
+                  <HabitTile
+                    key={habit.id}
+                    habit={habit}
+                    day={day}
+                    // Nothing to tick ahead of today, or before the habit began.
+                    locked={locked || selected < habit.startDate}
+                    onToggle={() =>
+                      dispatch({
+                        type: "toggleHabit",
+                        habitId: habit.id,
+                        dateKey: selected,
+                      })
+                    }
+                  />
+                ))}
+              </ul>
             </section>
           </>
         )}
@@ -196,7 +190,7 @@ function HabitTile({
       // colour the user picked, which can only arrive as a value.
       style={done ? undefined : { backgroundColor: face.fill, color: face.fg }}
       className={
-        "relative flex min-h-[116px] min-w-0 flex-col justify-between gap-3 rounded-[var(--radius-card)] p-3.5 sm:p-4 " +
+        "relative flex min-h-[156px] min-w-0 flex-col justify-between gap-3 rounded-[var(--radius-card)] p-3.5 sm:p-4 " +
         (done ? "bg-surface-3 text-ink-3" : "shadow-card")
       }
     >
@@ -205,13 +199,6 @@ function HabitTile({
           <span aria-hidden="true" className="text-[24px] leading-none">
             {habit.icon}
           </span>
-          {/* Late is the one reading the fill cannot carry — the card's colour
-              is a label the user chose, not a state — so it is said in words. */}
-          {day.status === "overdue" && (
-            <span className="rounded-[var(--radius-badge)] bg-neg-600 px-1.5 py-0.5 text-[11px] font-medium text-ink">
-              late
-            </span>
-          )}
         </span>
 
         <button
