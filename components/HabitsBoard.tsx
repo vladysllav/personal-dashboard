@@ -9,7 +9,6 @@ import { newId, useStore } from "@/lib/store";
 import type { HabitPatch } from "@/lib/sync";
 import type { Habit } from "@/lib/types";
 import { PageHeader } from "./AppShell";
-import { ConfirmDialog } from "./ConfirmDialog";
 import { HabitForm } from "./HabitForm";
 import { Icon } from "./Icon";
 import { WeekStrip } from "./WeekStrip";
@@ -31,37 +30,27 @@ export function HabitsBoard({ today }: { today: string }) {
 
   const [selected, setSelected] = useState(today);
   const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Habit | null>(null);
 
   const items = useMemo(() => habitsForDay(habits, selected), [habits, selected]);
-  const editing = editingId ? habits.find((h) => h.id === editingId) ?? null : null;
 
   // The future is not a thing you can have done yet, so its cards are shown
   // but not tickable — the same rule the month calendar has always had.
   const locked = selected > today;
   const done = items.filter((item) => item.day.status === "done").length;
 
-  const closeForm = () => {
-    setAdding(false);
-    setEditingId(null);
-  };
-
+  // Editing lives on the habit's own screen, behind the pencil; this board
+  // only ever creates.
   const submit = (patch: HabitPatch) => {
-    if (editing) {
-      dispatch({ type: "editHabit", habitId: editing.id, patch });
-    } else {
-      dispatch({
-        type: "addHabit",
-        habit: {
-          id: newId(),
-          marks: [],
-          createdAt: new Date().toISOString(),
-          ...patch,
-        },
-      });
-    }
-    closeForm();
+    dispatch({
+      type: "addHabit",
+      habit: {
+        id: newId(),
+        marks: [],
+        createdAt: new Date().toISOString(),
+        ...patch,
+      },
+    });
+    setAdding(false);
   };
 
   return (
@@ -134,7 +123,9 @@ export function HabitsBoard({ today }: { today: string }) {
                   </Empty>
                 </Card>
               ) : (
-                <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                // Two columns from the narrowest phone up: a card is an icon, a
+                // name and a ring, and one per row left most of it empty.
+                <ul className="grid grid-cols-2 gap-3 xl:grid-cols-3">
                   {items.map(({ habit, day }) => (
                     <HabitTile
                       key={habit.id}
@@ -148,7 +139,6 @@ export function HabitsBoard({ today }: { today: string }) {
                           dateKey: selected,
                         })
                       }
-                      onEdit={() => setEditingId(habit.id)}
                     />
                   ))}
                 </ul>
@@ -158,31 +148,13 @@ export function HabitsBoard({ today }: { today: string }) {
         )}
       </div>
 
-      {/* Never both at once: two dialogs mean two focus traps fighting over
-          the Tab key. Cancelling the delete drops back to the form. */}
-      {(adding || editing) && !pendingDelete && (
+      {adding && (
         <HabitForm
-          key={editing?.id ?? "new"}
-          mode={editing ? "edit" : "add"}
+          key="new"
+          mode="add"
           today={today}
-          initial={editing ?? undefined}
-          onCancel={closeForm}
-          onDelete={editing ? () => setPendingDelete(editing) : undefined}
+          onCancel={() => setAdding(false)}
           onSubmit={submit}
-        />
-      )}
-
-      {pendingDelete && (
-        <ConfirmDialog
-          title={`Delete “${pendingDelete.name}”?`}
-          body="This removes the habit and its whole history of marks. It can’t be undone."
-          confirmLabel="Delete habit"
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            dispatch({ type: "removeHabit", habitId: pendingDelete.id });
-            setPendingDelete(null);
-            closeForm();
-          }}
         />
       )}
     </>
@@ -194,9 +166,10 @@ export function HabitsBoard({ today }: { today: string }) {
  *
  * Two targets, because there are two things to do with a habit and they are
  * not the same size. The ring is the tick — the action you came for, at the
- * corner your thumb is already near. The rest of the card opens the form,
- * which is also where deleting lives: a destructive control on a card you tap
- * twenty times a week is a mistake waiting for a Monday morning.
+ * corner your thumb is already near. The rest of the card opens the habit's
+ * own screen, where its history, editing and deleting live: a destructive
+ * control on a card you tap twenty times a week is a mistake waiting for a
+ * Monday morning.
  *
  * A kept habit drops its colour entirely. Greying out is the strongest "this
  * one is finished" available without a badge, and it leaves the colour on the
@@ -207,13 +180,11 @@ function HabitTile({
   day,
   locked,
   onToggle,
-  onEdit,
 }: {
   habit: Habit;
   day: HabitDay;
   locked: boolean;
   onToggle: () => void;
-  onEdit: () => void;
 }) {
   const done = day.status === "done";
   const face = swatch(habit.color);
@@ -225,7 +196,7 @@ function HabitTile({
       // colour the user picked, which can only arrive as a value.
       style={done ? undefined : { backgroundColor: face.fill, color: face.fg }}
       className={
-        "flex min-h-[116px] flex-col justify-between gap-3 rounded-[var(--radius-card)] p-4 " +
+        "relative flex min-h-[116px] min-w-0 flex-col justify-between gap-3 rounded-[var(--radius-card)] p-3.5 sm:p-4 " +
         (done ? "bg-surface-3 text-ink-3" : "shadow-card")
       }
     >
@@ -249,7 +220,8 @@ function HabitTile({
           disabled={locked}
           aria-pressed={done}
           aria-label={`${done ? "Unmark" : "Mark"} ${habit.name}`}
-          className="-m-1.5 shrink-0 rounded-full p-1.5 disabled:cursor-not-allowed disabled:opacity-40"
+          // Above the card-wide link, so the tick never opens the habit.
+          className="relative z-10 -m-1.5 shrink-0 rounded-full p-1.5 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span
             aria-hidden="true"
@@ -263,13 +235,11 @@ function HabitTile({
         </button>
       </div>
 
-      {/* The text block is the edit target. A button rather than a link: this
-          opens a dialog, it does not go anywhere. */}
-      <button
-        type="button"
-        onClick={onEdit}
-        className="min-w-0 text-left"
-        aria-label={`Edit ${habit.name}`}
+      {/* The name is the link, and its ::after stretches over the whole card
+          so any tap outside the ring opens the habit. */}
+      <Link
+        href={`/habits/${habit.id}`}
+        className="min-w-0 text-left after:absolute after:inset-0 after:rounded-[var(--radius-card)] after:content-['']"
       >
         <span
           className={
@@ -280,7 +250,7 @@ function HabitTile({
           {habit.name}
         </span>
         <span className="mt-0.5 block truncate text-[12px] opacity-80">{detail}</span>
-      </button>
+      </Link>
     </li>
   );
 }

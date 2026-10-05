@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Icon } from "./Icon";
+import { LoadingScreen } from "./LoadingScreen";
 import { telegramInitData } from "./Telegram";
 
 type Phase = "checking" | "signing-in" | "failed";
@@ -51,7 +51,11 @@ export function TelegramSignIn() {
     };
   }, [router]);
 
-  if (phase === "checking") return null;
+  // Server-rendered and shown by CSS alone inside Telegram, so the sign-in
+  // card never paints there even for the frame before this effect runs.
+  if (phase === "checking") {
+    return <LoadingScreen label="Signing you in" className="hidden tg:flex" />;
+  }
 
   if (phase === "failed") {
     return (
@@ -67,15 +71,5 @@ export function TelegramSignIn() {
 
   // Covers the card rather than sitting next to it: for the half-second this
   // takes, a sign-in screen you are not meant to use is only a distraction.
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-canvas">
-      <span className="inline-flex size-[34px] items-center justify-center rounded-[10px] bg-accent-600 text-ink">
-        <Icon name="target" size={20} />
-      </span>
-      <span className="inline-flex items-center gap-2 text-[13px] text-ink-2">
-        <Icon name="spinner" size={15} />
-        Signing you in&hellip;
-      </span>
-    </div>
-  );
+  return <LoadingScreen label="Signing you in" />;
 }

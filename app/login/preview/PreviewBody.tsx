@@ -6,7 +6,9 @@ import { AppShell } from "@/components/AppShell";
 import { Dashboard } from "@/components/Dashboard";
 import { SurfacePage } from "@/components/SurfacePage";
 import { GoalDetail } from "@/components/GoalDetail";
+import { HabitDetail } from "@/components/HabitDetail";
 import { HabitStats } from "@/components/HabitStats";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { StoreProvider, buildSample } from "@/lib/store";
 
 function Body() {
@@ -27,6 +29,10 @@ function Body() {
           <SurfacePage surface="habits" />
         ) : view === "stats" ? (
           <HabitStats />
+        ) : view === "habit" ? (
+          <HabitDetail habitId={state.habits[Number(params.get("habit") ?? 0)]!.id} />
+        ) : view === "loading" ? (
+          <LoadingScreen />
         ) : view === "detail" ? (
           <GoalDetail goalId={state.goals[goalIndex]!.id} />
         ) : (
