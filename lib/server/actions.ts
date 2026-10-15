@@ -106,6 +106,14 @@ export async function applyAction(input: unknown): Promise<void> {
       return;
     }
 
+    case "setGoalFinished": {
+      await db
+        .update(goals)
+        .set({ finishedAt: action.finishedAt })
+        .where(and(eq(goals.id, action.goalId), eq(goals.userId, userId)));
+      return;
+    }
+
     case "removeGoal": {
       // Children fall with the parent via ON DELETE CASCADE.
       await db

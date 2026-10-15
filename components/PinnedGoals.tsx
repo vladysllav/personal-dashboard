@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { describeGoal } from "@/lib/describe";
-import { deriveGoal } from "@/lib/goals";
+import { activeGoals, deriveGoal } from "@/lib/goals";
 import { useStore } from "@/lib/store";
 import type { Goal } from "@/lib/types";
 import { Donut } from "./Donut";
@@ -19,12 +19,13 @@ import { StatusBadge } from "./StatusBadge";
  */
 export function PinnedGoals({ today }: { today: string }) {
   const { state } = useStore();
+  const goals = activeGoals(state.goals);
   const pinned = state.prefs.pinnedGoalIds
-    .map((id) => state.goals.find((g) => g.id === id))
+    .map((id) => goals.find((g) => g.id === id))
     .filter((g): g is Goal => Boolean(g))
     .slice(0, 2);
 
-  if (state.goals.length === 0) return null;
+  if (goals.length === 0) return null;
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4">

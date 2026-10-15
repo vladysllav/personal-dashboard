@@ -33,6 +33,7 @@ export const goalSchema = z.object({
   totalSteps: z.number().int().min(1).max(100_000),
   startDate: dateKey,
   createdAt: timestamp,
+  finishedAt: timestamp.optional(),
   entries: z.array(entrySchema).max(10_000),
   milestones: z.array(milestoneSchema).max(500),
 });
@@ -122,6 +123,11 @@ export const syncActionSchema = z.discriminatedUnion("type", [
     done: z.boolean(),
   }),
   z.object({ type: z.literal("removeGoal"), goalId: id }),
+  z.object({
+    type: z.literal("setGoalFinished"),
+    goalId: id,
+    finishedAt: timestamp.nullable(),
+  }),
   z.object({ type: z.literal("addHabits"), habits: z.array(habitSchema).max(50) }),
   z.object({
     type: z.literal("editHabit"),

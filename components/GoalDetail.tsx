@@ -2,14 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { STEP_NOUN, formatLongDate, isoAtDate } from "@/lib/dates";
+import { STEP_NOUN, formatLongDate, formatShortDate, isoAtDate } from "@/lib/dates";
 import { describeGoal } from "@/lib/describe";
-import {
-  formatPace,
-  formatPoints,
-  formatRate,
-  formatValue,
-} from "@/lib/format";
+import { formatPoints, formatRate, formatValue } from "@/lib/format";
 import { deriveGoal } from "@/lib/goals";
 import { goalSeries } from "@/lib/series";
 import { useStore } from "@/lib/store";
@@ -24,13 +19,14 @@ import { GoalForm } from "./GoalForm";
 import { Icon } from "./Icon";
 import { StatusBadge, statusText } from "./StatusBadge";
 import { TickChip } from "./TickChip";
-import { Button, Card, CardHead, Field, Input, Note } from "./ui";
+import { Button, Card, CardHead, Field, Input } from "./ui";
 
 export function GoalDetail({ goalId }: { goalId: string }) {
   const { state, ready, dispatch } = useStore();
   const today = useToday();
   const [editing, setEditing] = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [pendingFinish, setPendingFinish] = useState(false);
 
   if (!ready || !today) return null;
 
@@ -63,6 +59,20 @@ export function GoalDetail({ goalId }: { goalId: string }) {
   const copy = describeGoal(goal, derived);
   const rate = (n: number) => formatRate(n, goal.unit, goal.stepUnit);
   const [stepSingular] = STEP_NOUN[goal.stepUnit];
+  const finished = Boolean(goal.finishedAt);
+
+  function finish() {
+    dispatch({ type: "finishGoal", goalId: goal!.id, finished: true });
+    // A finished goal leaves Today too, so it gives up its pinned slot.
+    const pinned = state.prefs.pinnedGoalIds;
+    if (pinned.includes(goal!.id)) {
+      dispatch({
+        type: "setPinnedGoals",
+        goalIds: pinned.filter((id) => id !== goal!.id),
+      });
+    }
+    setPendingFinish(false);
+  }
 
   return (
     <>
@@ -78,6 +88,23 @@ export function GoalDetail({ goalId }: { goalId: string }) {
         actions={
           !editing ? (
             <>
+              {finished ? (
+                <Button
+                  icon={<Icon name="undo" size={15} />}
+                  onClick={() =>
+                    dispatch({ type: "finishGoal", goalId: goal.id, finished: false })
+                  }
+                >
+                  Reopen
+                </Button>
+              ) : (
+                <Button
+                  icon={<Icon name="trophy" size={15} />}
+                  onClick={() => setPendingFinish(true)}
+                >
+                  Finish
+                </Button>
+              )}
               <Button
                 icon={<Icon name="edit" size={15} />}
                 onClick={() => setEditing(true)}
@@ -118,9 +145,15 @@ export function GoalDetail({ goalId }: { goalId: string }) {
           <CardHead
             title="Where you are"
             right={
-              <StatusBadge status={derived.status} hint={copy.plan}>
-                {copy.headline}
-              </StatusBadge>
+              finished ? (
+                <span className="rounded-[var(--radius-badge)] bg-accent-50 px-1.5 py-0.5 text-[11px] font-medium text-accent-700">
+                  Finished {formatShortDate(goal.finishedAt!.slice(0, 10))}
+                </span>
+              ) : (
+                <StatusBadge status={derived.status} hint={copy.plan}>
+                  {copy.headline}
+                </StatusBadge>
+              )
             }
           />
           {/* The ring sits at the left and the three figures take the rest of
@@ -159,20 +192,18 @@ export function GoalDetail({ goalId }: { goalId: string }) {
               />
             </div>
           </div>
-          <Note>{copy.plan}</Note>
         </Card>
 
-        {/* The pace the goal was set at, against the pace it now needs. */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* The pace the goal was set at, against the pace it now needs —
+            half the width each, at every size. */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <PaceTile
             label="Reference pace"
-            hint="Fixed when the goal was created"
             big={rate(derived.originalRate)}
-            foot={`Should be at ${formatValue(derived.expectedValue, goal.unit)} by now`}
+            foot={`${formatValue(derived.expectedValue, goal.unit)} by now`}
           />
           <PaceTile
             label="Needed from here"
-            hint="Recomputed from what you’ve done"
             big={
               derived.adaptedRate === null
                 ? `Final ${stepSingular}`
@@ -184,16 +215,10 @@ export function GoalDetail({ goalId }: { goalId: string }) {
                     derived.remainingSteps === 1
                       ? stepSingular
                       : STEP_NOUN[goal.stepUnit][1]
-                  } to go`
+                  }`
                 : "Target reached"
             }
             emphasise={derived.status === "behind" || derived.status === "overdue"}
-          />
-          <PaceTile
-            label="Against the plan"
-            hint={`Measured in ${STEP_NOUN[goal.stepUnit][1]}`}
-            big={formatPace(derived.stepsDelta, goal.stepUnit)}
-            foot={`Plan expects ${formatValue(derived.expectedValue, goal.unit)} · you have ${formatValue(derived.current, goal.unit)}`}
           />
         </div>
 
@@ -233,6 +258,17 @@ export function GoalDetail({ goalId }: { goalId: string }) {
 
         <EntryLog goal={goal} />
       </div>
+
+      {pendingFinish && (
+        <ConfirmDialog
+          title={`Finish “${goal.name}”?`}
+          body="It leaves your goals and Today. Nothing is deleted."
+          confirmLabel="Finish goal"
+          destructive={false}
+          onCancel={() => setPendingFinish(false)}
+          onConfirm={finish}
+        />
+      )}
 
       {pendingDelete && (
         <ConfirmDialog
@@ -286,22 +322,20 @@ function Figure({
 
 function PaceTile({
   label,
-  hint,
   big,
   foot,
   emphasise = false,
 }: {
   label: string;
-  hint: string;
   big: string;
   foot: string;
   emphasise?: boolean;
 }) {
   return (
     <Card className={emphasise ? "border-warn-500" : ""}>
-      <CardHead title={label} hint={hint} />
+      <CardHead title={label} />
       <div className="p-4 sm:p-5">
-        <span className="block text-[28px] font-semibold leading-none tracking-[-0.02em] text-ink tnum">
+        <span className="block text-[22px] font-semibold leading-tight tracking-[-0.02em] text-ink tnum sm:text-[28px] sm:leading-none">
           {big}
         </span>
         <span className="mt-2 block max-w-[68ch] text-[12.5px] leading-relaxed text-ink-3 tnum">
@@ -336,11 +370,17 @@ function LogControl({ goal, today }: { goal: Goal; today: string }) {
   return (
     <Card aria-labelledby="log-heading">
       <CardHead id="log-heading" title="Log progress" />
-      <form className="flex flex-wrap items-end gap-3 p-4 sm:p-5" onSubmit={submit}>
+      {/* Value on its own row on a phone, then date and buttons beneath it.
+          The date field shrinks and the buttons never do, so the two can't
+          end up on top of each other. */}
+      <form
+        className="flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:p-5"
+        onSubmit={submit}
+      >
         <Field
           label={isMeasure ? "New reading" : "Add progress"}
           htmlFor="log-value"
-          className="flex-1 basis-[200px]"
+          className="sm:flex-1"
         >
           <Input
             id="log-value"
@@ -355,34 +395,36 @@ function LogControl({ goal, today }: { goal: Goal; today: string }) {
             }
           />
         </Field>
-        <Field label="Date" htmlFor="log-date" className="basis-[164px]">
-          <Input
-            id="log-date"
-            size="lg"
-            type="date"
-            max={today}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </Field>
-        <Button
-          type="submit"
-          variant="primary"
-          className="py-2.5"
-          disabled={value.trim() === ""}
-          icon={<Icon name="plus" size={15} />}
-        >
-          Log
-        </Button>
-        {hasEntries && (
+        <div className="flex items-end gap-3">
+          <Field label="Date" htmlFor="log-date" className="flex-1 sm:w-[164px] sm:flex-none">
+            <Input
+              id="log-date"
+              size="lg"
+              type="date"
+              max={today}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Field>
           <Button
-            className="py-2.5"
-            icon={<Icon name="undo" size={15} />}
-            onClick={() => dispatch({ type: "undoLastEntry", goalId: goal.id })}
+            type="submit"
+            variant="primary"
+            className="shrink-0 py-2.5"
+            disabled={value.trim() === ""}
+            icon={<Icon name="plus" size={15} />}
           >
-            Undo last
+            Log
           </Button>
-        )}
+          {hasEntries && (
+            <Button
+              className="shrink-0 py-2.5"
+              icon={<Icon name="undo" size={15} />}
+              onClick={() => dispatch({ type: "undoLastEntry", goalId: goal.id })}
+            >
+              Undo
+            </Button>
+          )}
+        </div>
       </form>
     </Card>
   );

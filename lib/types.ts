@@ -43,6 +43,11 @@ export type Goal = {
   entries: GoalEntry[];
   milestones: Milestone[];
   createdAt: string;
+  /**
+   * When the goal was declared finished. A finished goal is kept, not
+   * deleted — it simply leaves every list. Absent means still running.
+   */
+  finishedAt?: string;
 };
 
 /** The interval a habit's count applies to. */

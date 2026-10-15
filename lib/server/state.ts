@@ -89,6 +89,7 @@ export async function loadState(userId: string): Promise<DashboardState> {
     totalSteps: row.totalSteps,
     startDate: row.startDate,
     createdAt: row.createdAt,
+    ...(row.finishedAt ? { finishedAt: row.finishedAt } : {}),
     entries: (entriesByGoal.get(row.id) ?? []).map((entry) => ({
       id: entry.id,
       at: entry.at,

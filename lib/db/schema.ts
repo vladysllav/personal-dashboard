@@ -101,6 +101,8 @@ export const goals = pgTable(
     totalSteps: integer("total_steps").notNull(),
     startDate: text("start_date").notNull(),
     createdAt: text("created_at").notNull(),
+    /** ISO timestamp the goal was finished. Null while it is still running. */
+    finishedAt: text("finished_at"),
   },
   (t) => [index("goals_user_id_idx").on(t.userId)],
 );

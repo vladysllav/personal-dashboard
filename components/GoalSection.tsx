@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { formatLongDate } from "@/lib/dates";
 import { describeGoal } from "@/lib/describe";
 import { formatRange, formatValue } from "@/lib/format";
-import { sortByUrgency, type GoalDerived } from "@/lib/goals";
+import { activeGoals, sortByUrgency, type GoalDerived } from "@/lib/goals";
 import { useStore } from "@/lib/store";
 import type { Goal } from "@/lib/types";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -15,12 +14,12 @@ import { Icon } from "./Icon";
 import { PaceBar } from "./PaceBar";
 import { StatusBadge, statusText } from "./StatusBadge";
 import { TickChip } from "./TickChip";
-import { Button, Card, CardHead, Empty, IconButton, Note, Seg } from "./ui";
+import { Button, Card, CardHead, Empty, IconButton, Seg } from "./ui";
 
 /**
- * Every goal, ranked by what needs attention first. Two readings of the same
- * data: dense rows with a bullet chart each, or a grid of rings. Both keep the
- * plan visible next to the fact — a percentage on its own always looks fine.
+ * Every running goal, ranked by what needs attention first. Two readings of
+ * the same data: dense rows with a bullet chart each, or a grid of rings.
+ * Finished goals are kept but left out.
  */
 export function GoalSection({
   today,
@@ -35,7 +34,7 @@ export function GoalSection({
   const [pendingDelete, setPendingDelete] = useState<Goal | null>(null);
   const view = state.prefs.goalView;
 
-  const ranked = sortByUrgency(state.goals, today);
+  const ranked = sortByUrgency(activeGoals(state.goals), today);
   const editing = editingId
     ? state.goals.find((g) => g.id === editingId) ?? null
     : null;
@@ -96,10 +95,7 @@ export function GoalSection({
       )}
 
       {empty ? (
-        <Empty>
-          No goals yet. Add one with a start value, a target, and the number of
-          steps to get there.
-        </Empty>
+        <Empty>No goals yet.</Empty>
       ) : view === "ring" ? (
         <ul className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
           {ranked.map(({ goal, derived }) => (
@@ -113,23 +109,17 @@ export function GoalSection({
           ))}
         </ul>
       ) : (
-        <>
-          <ul className="divide-y divide-dashed divide-line">
-            {ranked.map(({ goal, derived }) => (
-              <GoalRow
-                key={goal.id}
-                goal={goal}
-                derived={derived}
-                onEdit={() => setEditingId(goal.id)}
-                onDelete={() => setPendingDelete(goal)}
-              />
-            ))}
-          </ul>
-          <Note>
-            The bar is where you are; the upright marker is where the plan
-            expects you today. The gap between them is the whole read.
-          </Note>
-        </>
+        <ul className="divide-y divide-dashed divide-line">
+          {ranked.map(({ goal, derived }) => (
+            <GoalRow
+              key={goal.id}
+              goal={goal}
+              derived={derived}
+              onEdit={() => setEditingId(goal.id)}
+              onDelete={() => setPendingDelete(goal)}
+            />
+          ))}
+        </ul>
       )}
 
       {pendingDelete && (
@@ -243,10 +233,6 @@ function GoalRow({
             status={derived.status}
             label={copy.aria}
           />
-          <div className="mt-1.5 flex flex-wrap justify-between gap-x-3 text-[11.5px] text-ink-3 tnum">
-            <span className="truncate">{copy.plan}</span>
-            <span>{formatLongDate(derived.deadline)}</span>
-          </div>
         </div>
 
         <div className="min-w-0">
@@ -260,9 +246,6 @@ function GoalRow({
               </span>
             )}
           </div>
-          <p className="mt-1 truncate text-[12.5px] text-ink-2 tnum">
-            {copy.detail}
-          </p>
         </div>
 
         <div className="justify-self-end">
@@ -335,7 +318,6 @@ function RingCell({
               {copy.headline}
             </StatusBadge>
           </div>
-          <p className="mt-1.5 text-[12.5px] text-ink-2 tnum">{copy.detail}</p>
         </div>
       </div>
     </li>

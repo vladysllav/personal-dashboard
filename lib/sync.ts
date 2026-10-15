@@ -51,6 +51,7 @@ export type Intent =
   | { type: "undoLastEntry"; goalId: string }
   | { type: "toggleMilestone"; goalId: string; milestoneId: string }
   | { type: "removeGoal"; goalId: string }
+  | { type: "finishGoal"; goalId: string; finished: boolean }
   | { type: "addHabit"; habit: Habit }
   | { type: "seedSampleHabits" }
   | { type: "editHabit"; habitId: string; patch: HabitPatch }
@@ -83,6 +84,7 @@ export type SyncAction =
   | { type: "removeEntry"; goalId: string; entryId: string }
   | { type: "setMilestone"; goalId: string; milestoneId: string; done: boolean }
   | { type: "removeGoal"; goalId: string }
+  | { type: "setGoalFinished"; goalId: string; finishedAt: string | null }
   | { type: "addHabits"; habits: Habit[] }
   | { type: "editHabit"; habitId: string; patch: HabitPatch }
   | { type: "setHabitMark"; habitId: string; dateKey: string; done: boolean }

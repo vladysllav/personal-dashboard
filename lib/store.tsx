@@ -103,6 +103,16 @@ function reducer(state: DashboardState, action: Action): DashboardState {
     case "removeGoal":
       return { ...state, goals: state.goals.filter((g) => g.id !== action.goalId) };
 
+    case "setGoalFinished":
+      return {
+        ...state,
+        goals: state.goals.map((g) => {
+          if (g.id !== action.goalId) return g;
+          const { finishedAt: _, ...rest } = g;
+          return action.finishedAt ? { ...rest, finishedAt: action.finishedAt } : rest;
+        }),
+      };
+
     case "addHabits":
       return { ...state, habits: [...state.habits, ...action.habits] };
 
@@ -197,6 +207,13 @@ function seal(intent: Intent, state: DashboardState): SyncAction | null {
         done: !habit.marks.includes(intent.dateKey),
       };
     }
+
+    case "finishGoal":
+      return {
+        type: "setGoalFinished",
+        goalId: intent.goalId,
+        finishedAt: intent.finished ? new Date().toISOString() : null,
+      };
 
     case "seedSampleHabits":
       return { type: "addHabits", habits: buildSampleHabits(todayKey()) };

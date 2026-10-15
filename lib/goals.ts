@@ -104,6 +104,11 @@ function deriveStatus(input: {
   return "on-pace";
 }
 
+/** Goals still running. A finished goal is kept in the data but leaves every list. */
+export function activeGoals(goals: Goal[]): Goal[] {
+  return goals.filter((g) => !g.finishedAt);
+}
+
 export function currentValue(goal: Goal): number {
   switch (goal.kind) {
     case "accumulate":

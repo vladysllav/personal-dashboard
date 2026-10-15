@@ -20,6 +20,7 @@ export async function insertGoal(tx: Tx, userId: string, goal: Goal): Promise<vo
     totalSteps: goal.totalSteps,
     startDate: goal.startDate,
     createdAt: goal.createdAt,
+    finishedAt: goal.finishedAt ?? null,
   });
 
   if (goal.entries.length) {
