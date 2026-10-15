@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { STEP_NOUN, formatLongDate, formatShortDate, isoAtDate } from "@/lib/dates";
 import { describeGoal } from "@/lib/describe";
-import { formatPoints, formatRate, formatValue } from "@/lib/format";
+import { formatNumber, formatValue } from "@/lib/format";
 import { deriveGoal } from "@/lib/goals";
 import { goalSeries } from "@/lib/series";
+import { daysLeft, goalWeeks, neededPerWeek, plannedPerWeek } from "@/lib/weekly";
 import { useStore } from "@/lib/store";
 import { useToday } from "@/lib/useToday";
 import type { Goal } from "@/lib/types";
@@ -16,8 +17,10 @@ import { Donut } from "./Donut";
 import { EntryLog } from "./EntryLog";
 import { GoalChart } from "./GoalChart";
 import { GoalForm } from "./GoalForm";
+import { GoalProgressBar } from "./GoalProgressBar";
+import { GoalWeekChart } from "./GoalWeekChart";
 import { Icon } from "./Icon";
-import { StatusBadge, statusText } from "./StatusBadge";
+import { StatusBadge } from "./StatusBadge";
 import { TickChip } from "./TickChip";
 import { Button, Card, CardHead, Field, Input } from "./ui";
 
@@ -57,8 +60,9 @@ export function GoalDetail({ goalId }: { goalId: string }) {
 
   const derived = deriveGoal(goal, today);
   const copy = describeGoal(goal, derived);
-  const rate = (n: number) => formatRate(n, goal.unit, goal.stepUnit);
-  const [stepSingular] = STEP_NOUN[goal.stepUnit];
+  const weekly = neededPerWeek(goal, derived, today);
+  const left = daysLeft(derived, today);
+  const remaining = Math.max(0, derived.remaining * (Math.sign(derived.span) || 1));
   const finished = Boolean(goal.finishedAt);
 
   function finish() {
@@ -139,11 +143,10 @@ export function GoalDetail({ goalId }: { goalId: string }) {
           </Card>
         )}
 
-        {/* The one big read: the ring, the two figures it sits between, and
-            the state of the plan. */}
+        {/* The whole goal on one bar, with the plan's line across it. */}
         <Card>
           <CardHead
-            title="Where you are"
+            title="Progress"
             right={
               finished ? (
                 <span className="rounded-[var(--radius-badge)] bg-accent-50 px-1.5 py-0.5 text-[11px] font-medium text-accent-700">
@@ -156,71 +159,47 @@ export function GoalDetail({ goalId }: { goalId: string }) {
               )
             }
           />
-          {/* The ring sits at the left and the three figures take the rest of
-              the width as one strip, divided. Left as a compact cluster they
-              left half a wide card empty, which read as a card that had failed
-              to load rather than as a deliberate margin. */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-6 p-4 sm:p-6">
+          <GoalProgressBar goal={goal} derived={derived} label={copy.aria} />
+        </Card>
+
+        {/* What each week has to carry, how far along the goal is, and where
+            it ends. */}
+        <Card>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 p-4 sm:gap-6 sm:p-6">
+            <Figure
+              label="Weekly goal"
+              value={formatNumber(weekly)}
+              caption={
+                left === 0
+                  ? "deadline passed"
+                  : `${left} ${left === 1 ? "day" : "days"} left`
+              }
+            />
             <Donut
               progress={derived.progress}
               plannedProgress={derived.plannedProgress}
               status={derived.status}
-              size={168}
+              size={136}
+              caption={
+                remaining > 0
+                  ? `${formatNumber(remaining)} to go`
+                  : "target reached"
+              }
             />
-            <div className="grid min-w-0 flex-1 basis-[280px] grid-cols-2 gap-y-6 sm:grid-cols-3">
-              <Figure
-                value={formatValue(derived.current, goal.unit)}
-                label="now"
-              />
-              <Figure
-                value={formatValue(goal.pointB, goal.unit)}
-                label="target"
-                divided
-              />
-              <Figure
-                value={copy.headline}
-                valueClass={statusText(derived.status)}
-                label={
-                  derived.status === "on-pace" || derived.status === "complete"
-                    ? "pace"
-                    : `${formatPoints(derived.pointsDelta)} on the goal`
-                }
-                // Two columns on a phone would leave this one alone on the
-                // second row with a rule hanging off its left edge.
-                className="col-span-2 sm:col-span-1"
-                dividedOnWide
-              />
-            </div>
+            <Figure
+              label="Target"
+              value={formatNumber(goal.pointB)}
+              caption={`by ${formatShortDate(derived.deadline)}`}
+            />
           </div>
         </Card>
 
-        {/* The pace the goal was set at, against the pace it now needs —
-            half the width each, at every size. */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <PaceTile
-            label="Reference pace"
-            big={rate(derived.originalRate)}
-            foot={`${formatValue(derived.expectedValue, goal.unit)} by now`}
+        {goal.kind !== "milestone" && (
+          <GoalWeekChart
+            weeks={goalWeeks(goal, today)}
+            target={plannedPerWeek(goal, derived)}
           />
-          <PaceTile
-            label="Needed from here"
-            big={
-              derived.adaptedRate === null
-                ? `Final ${stepSingular}`
-                : rate(derived.adaptedRate)
-            }
-            foot={
-              derived.remaining > 0
-                ? `${formatValue(derived.remaining, goal.unit)} left · ${derived.remainingSteps} ${
-                    derived.remainingSteps === 1
-                      ? stepSingular
-                      : STEP_NOUN[goal.stepUnit][1]
-                  }`
-                : "Target reached"
-            }
-            emphasise={derived.status === "behind" || derived.status === "overdue"}
-          />
-        </div>
+        )}
 
         <LogControl goal={goal} today={today} />
 
@@ -283,66 +262,26 @@ export function GoalDetail({ goalId }: { goalId: string }) {
   );
 }
 
-/**
- * One fact in the hero strip. The rule between columns is a border on the cell
- * rather than a `<span>` between them, so it stays put when the grid rewraps
- * to two columns on a phone.
- */
+/** One side of the ring: a label, the figure, and what it is measured against. */
 function Figure({
-  value,
   label,
-  valueClass = "text-ink",
-  className = "",
-  divided = false,
-  dividedOnWide = false,
+  value,
+  caption,
 }: {
-  value: string;
   label: string;
-  valueClass?: string;
-  className?: string;
-  divided?: boolean;
-  dividedOnWide?: boolean;
+  value: string;
+  caption: string;
 }) {
-  const rule = divided
-    ? "border-l border-line pl-5 sm:pl-6"
-    : dividedOnWide
-      ? "sm:border-l sm:border-line sm:pl-6"
-      : "";
   return (
-    <div className={`min-w-0 ${rule} ${className}`}>
-      <span
-        className={`block text-[28px] font-semibold leading-none tracking-[-0.02em] tnum ${valueClass}`}
-      >
+    <div className="min-w-0 text-center">
+      <span className="block text-[12.5px] text-ink-2 sm:text-[13.5px]">{label}</span>
+      <span className="mt-1 block truncate text-[24px] font-semibold leading-tight tracking-[-0.02em] text-ink tnum sm:text-[32px]">
         {value}
       </span>
-      <span className="mt-1.5 block text-[11.5px] text-ink-3">{label}</span>
+      <span className="mt-0.5 block text-[11.5px] text-ink-3 tnum sm:text-[12.5px]">
+        {caption}
+      </span>
     </div>
-  );
-}
-
-function PaceTile({
-  label,
-  big,
-  foot,
-  emphasise = false,
-}: {
-  label: string;
-  big: string;
-  foot: string;
-  emphasise?: boolean;
-}) {
-  return (
-    <Card className={emphasise ? "border-warn-500" : ""}>
-      <CardHead title={label} />
-      <div className="p-4 sm:p-5">
-        <span className="block text-[22px] font-semibold leading-tight tracking-[-0.02em] text-ink tnum sm:text-[28px] sm:leading-none">
-          {big}
-        </span>
-        <span className="mt-2 block max-w-[68ch] text-[12.5px] leading-relaxed text-ink-3 tnum">
-          {foot}
-        </span>
-      </div>
-    </Card>
   );
 }
 
@@ -419,9 +358,11 @@ function LogControl({ goal, today }: { goal: Goal; today: string }) {
             <Button
               className="shrink-0 py-2.5"
               icon={<Icon name="undo" size={15} />}
+              aria-label="Undo last entry"
               onClick={() => dispatch({ type: "undoLastEntry", goalId: goal.id })}
             >
-              Undo
+              {/* Icon only on a phone, so the date keeps room for itself. */}
+              <span className="hidden sm:inline">Undo</span>
             </Button>
           )}
         </div>

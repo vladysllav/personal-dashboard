@@ -213,3 +213,13 @@ const MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
 export function formatMonthYear(key: string): string {
   return MONTH_YEAR.format(fromDateKey(`${monthKey(key)}-01`));
 }
+
+const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "numeric",
+});
+
+/** "13/10" — for axis ticks, where a month name is too wide to repeat. */
+export function formatDayMonth(key: string): string {
+  return DAY_MONTH.format(fromDateKey(key));
+}
