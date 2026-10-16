@@ -14,7 +14,7 @@ import { Icon } from "./Icon";
 import { PaceBar } from "./PaceBar";
 import { StatusBadge, statusText } from "./StatusBadge";
 import { TickChip } from "./TickChip";
-import { Button, Card, CardHead, Empty, IconButton, Seg } from "./ui";
+import { Card, CardHead, Empty, IconButton, Seg } from "./ui";
 
 /**
  * Every running goal, ranked by what needs attention first. Two readings of
@@ -24,12 +24,17 @@ import { Button, Card, CardHead, Empty, IconButton, Seg } from "./ui";
 export function GoalSection({
   today,
   title = "Goals",
+  adding,
+  onAddingChange,
 }: {
   today: string;
   title?: string;
+  /** Owned by the page, whose header carries the add button. */
+  adding: boolean;
+  onAddingChange: (adding: boolean) => void;
 }) {
   const { state, dispatch } = useStore();
-  const [adding, setAdding] = useState(false);
+  const setAdding = onAddingChange;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Goal | null>(null);
   const view = state.prefs.goalView;
@@ -47,27 +52,17 @@ export function GoalSection({
         id="goals-heading"
         title={title}
         right={
-          <>
-            {ranked.length > 0 && (
-              <Seg
-                label="Goal layout"
-                value={view}
-                onChange={(v) => dispatch({ type: "setGoalView", view: v })}
-                options={[
-                  { value: "bar", label: "Pace", icon: "bars" },
-                  { value: "ring", label: "Rings", icon: "ring" },
-                ]}
-              />
-            )}
-            {!adding && !editing && (
-              <Button
-                icon={<Icon name="plus" size={15} />}
-                onClick={() => setAdding(true)}
-              >
-                Add goal
-              </Button>
-            )}
-          </>
+          ranked.length > 0 ? (
+            <Seg
+              label="Goal layout"
+              value={view}
+              onChange={(v) => dispatch({ type: "setGoalView", view: v })}
+              options={[
+                { value: "bar", label: "Pace", icon: "bars" },
+                { value: "ring", label: "Rings", icon: "ring" },
+              ]}
+            />
+          ) : undefined
         }
       />
 

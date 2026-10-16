@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { todayKey } from "@/lib/dates";
+import { STEP_NOUN, addDays, daysBetween, deadlineKey, stepsElapsed, todayKey } from "@/lib/dates";
 import { newId, type GoalPatch } from "@/lib/store";
 import type { Goal, GoalKind, Milestone, StepUnit } from "@/lib/types";
 import { Alert, Button, Field, Input, Select, Textarea } from "./ui";
@@ -49,10 +49,13 @@ export function GoalForm({
     initial?.milestones.map((m) => m.label).join("\n") ?? "",
   );
   const [stepUnit, setStepUnit] = useState<StepUnit>(initial?.stepUnit ?? "day");
-  const [totalSteps, setTotalSteps] = useState(
-    initial ? String(initial.totalSteps) : "30",
-  );
   const [startDate, setStartDate] = useState(initial?.startDate ?? todayKey());
+  const [endDate, setEndDate] = useState(
+    initial
+      ? deadlineKey(initial.startDate, initial.totalSteps, initial.stepUnit)
+      : addDays(todayKey(), 30),
+  );
+  const steps = stepsBetween(startDate, endDate, stepUnit);
   const [error, setError] = useState<string | null>(null);
 
   const isMilestone = kind === "milestone";
@@ -64,9 +67,11 @@ export function GoalForm({
     const trimmed = name.trim();
     if (!trimmed) return setError("Give the goal a name.");
 
-    const steps = Number(totalSteps);
-    if (!Number.isFinite(steps) || steps < 1) {
-      return setError("Steps must be a whole number of 1 or more.");
+    if (!startDate || !endDate || endDate <= startDate) {
+      return setError("The end date has to come after the start.");
+    }
+    if (steps < 1) {
+      return setError(`The goal needs at least one ${STEP_NOUN[stepUnit][0]}.`);
     }
 
     const labels = milestoneText
@@ -111,7 +116,7 @@ export function GoalForm({
         pointA: a,
         pointB: b,
         stepUnit,
-        totalSteps: Math.round(steps),
+        totalSteps: steps,
         startDate,
         ...(isMilestone ? { milestones } : {}),
       });
@@ -126,7 +131,7 @@ export function GoalForm({
       pointA: a,
       pointB: b,
       stepUnit,
-      totalSteps: Math.round(steps),
+      totalSteps: steps,
       startDate,
       entries: [],
       milestones,
@@ -219,19 +224,32 @@ export function GoalForm({
           </>
         )}
 
-        <Field label="Steps" htmlFor={`${uid}-steps`}>
+        <Field label="Starts" htmlFor={`${uid}-start`}>
           <Input
-            id={`${uid}-steps`}
+            id={`${uid}-start`}
             size="lg"
-            type="number"
-            min={1}
-            step={1}
-            value={totalSteps}
-            onChange={(e) => setTotalSteps(e.target.value)}
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
           />
         </Field>
 
-        <Field label="Measured by" htmlFor={`${uid}-step-unit`}>
+        <Field label="Ends" htmlFor={`${uid}-end`}>
+          <Input
+            id={`${uid}-end`}
+            size="lg"
+            type="date"
+            min={startDate}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </Field>
+
+        <Field
+          label="Measured by"
+          htmlFor={`${uid}-step-unit`}
+          hint={steps > 0 ? `${steps} ${STEP_NOUN[stepUnit][steps === 1 ? 0 : 1]}` : undefined}
+        >
           <Select
             id={`${uid}-step-unit`}
             size="lg"
@@ -243,23 +261,7 @@ export function GoalForm({
             <option value="month">Months</option>
           </Select>
         </Field>
-
-        <Field label="Starts" htmlFor={`${uid}-start`}>
-          <Input
-            id={`${uid}-start`}
-            size="lg"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </Field>
       </div>
-
-      <p className="mt-3 max-w-[68ch] text-[11.5px] leading-relaxed text-ink-3">
-        Steps are how the goal is divided. {totalSteps || "0"}{" "}
-        {stepUnit === "day" ? "days" : stepUnit === "week" ? "weeks" : "months"}{" "}
-        sets both the deadline and the pace you&rsquo;ll be measured against.
-      </p>
 
       {error && (
         <div className="mt-3">
@@ -275,4 +277,25 @@ export function GoalForm({
       </div>
     </form>
   );
+}
+
+/**
+ * How many whole steps fit between two dates, rounded to the nearest one. The
+ * deadline is rebuilt from the step count, so a range that isn't a whole
+ * number of weeks or months lands on the closest step boundary.
+ */
+function stepsBetween(start: string, end: string, unit: StepUnit): number {
+  const days = daysBetween(start, end);
+  if (!start || !end || days <= 0) return 0;
+  switch (unit) {
+    case "day":
+      return days;
+    case "week":
+      return Math.max(1, Math.round(days / 7));
+    case "month": {
+      const whole = stepsElapsed(start, end, "month");
+      const rest = daysBetween(deadlineKey(start, whole, "month"), end);
+      return Math.max(1, whole + (rest >= 15 ? 1 : 0));
+    }
+  }
 }

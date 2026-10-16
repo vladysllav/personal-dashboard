@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { useToday } from "@/lib/useToday";
 import { PageHeader } from "./AppShell";
 import { GoalSection } from "./GoalSection";
 import { HabitsBoard } from "./HabitsBoard";
-import { Alert } from "./ui";
+import { Icon } from "./Icon";
+import { Alert, Button } from "./ui";
 
 /**
  * The Goals tab is the list of goals that are still running, and nothing
@@ -16,6 +18,7 @@ import { Alert } from "./ui";
 export function SurfacePage({ surface }: { surface: "goals" | "habits" }) {
   const { ready, syncError } = useStore();
   const today = useToday();
+  const [adding, setAdding] = useState(false);
 
   if (!ready || !today) return null;
 
@@ -23,10 +26,23 @@ export function SurfacePage({ surface }: { surface: "goals" | "habits" }) {
 
   return (
     <>
-      <PageHeader title="Goals" />
+      <PageHeader
+        title="Goals"
+        actions={
+          <Button
+            variant="primary"
+            aria-label="Add goal"
+            title="Add goal"
+            className="size-10 !p-0"
+            disabled={adding}
+            icon={<Icon name="plus" size={18} />}
+            onClick={() => setAdding(true)}
+          />
+        }
+      />
       <div className="flex flex-col gap-4">
         {syncError && <Alert>{syncError}</Alert>}
-        <GoalSection today={today} />
+        <GoalSection today={today} adding={adding} onAddingChange={setAdding} />
       </div>
     </>
   );
