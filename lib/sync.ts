@@ -4,8 +4,10 @@ import type {
   GoalEntry,
   GoalView,
   Habit,
+  Challenge,
   Macros,
   NutritionDay,
+  Relapse,
   WeightEntry,
 } from "./types";
 
@@ -34,6 +36,9 @@ export type GoalPatch = Partial<
     | "milestones"
   >
 >;
+
+/** Everything about a challenge a form can change. Relapses are never patched here. */
+export type ChallengePatch = Pick<Challenge, "name" | "icon" | "startDate" | "endDate" | "benefit">;
 
 /**
  * What a component asks for. Deliberately loose: `logGoal` may omit the
@@ -66,6 +71,12 @@ export type Intent =
   /** Adds to the day's totals, or with `replace` overwrites them. */
   | { type: "logNutrition"; date: string; macros: Macros; replace?: boolean }
   | { type: "logWeight"; date: string; value: number }
+  | { type: "addChallenge"; challenge: Challenge }
+  | { type: "editChallenge"; challengeId: string; patch: ChallengePatch }
+  | { type: "removeChallenge"; challengeId: string }
+  | { type: "finishChallenge"; challengeId: string; finished: boolean }
+  | { type: "logRelapse"; challengeId: string; date: string; count: number }
+  | { type: "removeRelapse"; challengeId: string; relapseId: string }
   | { type: "replace"; state: DashboardState };
 
 /**
@@ -102,4 +113,10 @@ export type SyncAction =
   /** The day's totals as they should now stand — absolute, so a retry is harmless. */
   | { type: "setNutritionDay"; day: NutritionDay }
   | { type: "addWeight"; entry: WeightEntry }
+  | { type: "addChallenge"; challenge: Challenge }
+  | { type: "editChallenge"; challengeId: string; patch: ChallengePatch }
+  | { type: "removeChallenge"; challengeId: string }
+  | { type: "setChallengeFinished"; challengeId: string; finishedAt: string | null }
+  | { type: "addRelapse"; challengeId: string; relapse: Relapse }
+  | { type: "removeRelapse"; challengeId: string; relapseId: string }
   | { type: "replace"; state: DashboardState };

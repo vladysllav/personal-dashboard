@@ -103,10 +103,11 @@ const TABS: Array<{ href: string; label: string; icon: IconName }> = [
   { href: "/goals", label: "Goals", icon: "target" },
   { href: "/habits", label: "Habits", icon: "grid" },
   { href: "/nutrition", label: "Nutrition", icon: "food" },
+  { href: "/challenges", label: "Challenges", icon: "flag" },
 ];
 
 /**
- * The bottom bar. Four destinations, thumb-height, each a 56px target — the
+ * The bottom bar. Five destinations, thumb-height, each a 56px target — the
  * sidebar's job done in the shape a phone expects.
  *
  * It is rendered from CSS state (`html[data-tg]`) rather than from React

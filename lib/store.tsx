@@ -37,8 +37,55 @@ function reducer(state: DashboardState, action: Action): DashboardState {
       return action.state;
 
     case "replace":
-      // Sample data covers goals and habits; what you have eaten stays.
-      return { ...action.state, nutrition: state.nutrition };
+      // Sample data covers goals and habits; nutrition and challenges stay.
+      return { ...action.state, nutrition: state.nutrition, challenges: state.challenges };
+
+    case "addChallenge":
+      return { ...state, challenges: [...state.challenges, action.challenge] };
+
+    case "editChallenge":
+      return {
+        ...state,
+        challenges: state.challenges.map((c) =>
+          c.id === action.challengeId ? { ...c, ...action.patch } : c,
+        ),
+      };
+
+    case "removeChallenge":
+      return {
+        ...state,
+        challenges: state.challenges.filter((c) => c.id !== action.challengeId),
+      };
+
+    case "setChallengeFinished":
+      return {
+        ...state,
+        challenges: state.challenges.map((c) => {
+          if (c.id !== action.challengeId) return c;
+          const { finishedAt: _, ...rest } = c;
+          return action.finishedAt ? { ...rest, finishedAt: action.finishedAt } : rest;
+        }),
+      };
+
+    case "addRelapse":
+      return {
+        ...state,
+        challenges: state.challenges.map((c) =>
+          c.id === action.challengeId
+            ? { ...c, relapses: [...c.relapses, action.relapse].sort((a, b) => (a.date < b.date ? -1 : 1)) }
+            : c,
+        ),
+      };
+
+    case "removeRelapse":
+      return {
+        ...state,
+        challenges: state.challenges.map((c) =>
+          c.id === action.challengeId
+            ? { ...c, relapses: c.relapses.filter((r) => r.id !== action.relapseId) }
+            : c,
+        ),
+      };
 
     case "setNutritionPlan":
       return { ...state, nutrition: { ...state.nutrition, plan: action.plan } };
@@ -263,6 +310,20 @@ function seal(intent: Intent, state: DashboardState): SyncAction | null {
         },
       };
     }
+
+    case "finishChallenge":
+      return {
+        type: "setChallengeFinished",
+        challengeId: intent.challengeId,
+        finishedAt: intent.finished ? new Date().toISOString() : null,
+      };
+
+    case "logRelapse":
+      return {
+        type: "addRelapse",
+        challengeId: intent.challengeId,
+        relapse: { id: newId(), date: intent.date, count: intent.count },
+      };
 
     case "logWeight":
       return {
@@ -517,5 +578,6 @@ export function buildSample(): DashboardState {
     habits: buildSampleHabits(today),
     prefs: DEFAULT_PREFS,
     nutrition: { plan: null, days: [], weights: [] },
+    challenges: [],
   };
 }

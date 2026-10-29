@@ -1,6 +1,8 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  challengeRelapses,
+  challenges,
   goalEntries,
   goals,
   habitMarks,
@@ -22,6 +24,7 @@ export const EMPTY_STATE: DashboardState = {
   habits: [],
   prefs: { ...DEFAULT_PREFS },
   nutrition: { plan: null, days: [], weights: [] },
+  challenges: [],
 };
 
 /**
@@ -41,7 +44,7 @@ function parseIdList(raw: string | null | undefined): string[] {
  * row counts here are personal-scale, and this keeps ordering explicit.
  */
 export async function loadState(userId: string): Promise<DashboardState> {
-  const [goalRows, habitRows, prefRow, planRow, dayRows, weightRows] = await Promise.all([
+  const [goalRows, habitRows, prefRow, planRow, dayRows, weightRows, challengeRows] = await Promise.all([
     db.select().from(goals).where(eq(goals.userId, userId)).orderBy(asc(goals.seq)),
     db.select().from(habits).where(eq(habits.userId, userId)).orderBy(asc(habits.seq)),
     db
@@ -60,12 +63,19 @@ export async function loadState(userId: string): Promise<DashboardState> {
       .from(weightEntries)
       .where(eq(weightEntries.userId, userId))
       .orderBy(asc(weightEntries.dateKey), asc(weightEntries.at)),
+    db
+      .select()
+      .from(challenges)
+      .where(eq(challenges.userId, userId))
+      .orderBy(asc(challenges.seq)),
   ]);
 
   const goalIds = goalRows.map((g) => g.id);
   const habitIds = habitRows.map((h) => h.id);
 
-  const [entryRows, milestoneRows, markRows] = await Promise.all([
+  const challengeIds = challengeRows.map((c) => c.id);
+
+  const [entryRows, milestoneRows, markRows, relapseRows] = await Promise.all([
     goalIds.length
       ? db
           .select()
@@ -87,7 +97,15 @@ export async function loadState(userId: string): Promise<DashboardState> {
           .where(inArray(habitMarks.habitId, habitIds))
           .orderBy(asc(habitMarks.dateKey))
       : Promise.resolve([]),
+    challengeIds.length
+      ? db
+          .select()
+          .from(challengeRelapses)
+          .where(inArray(challengeRelapses.challengeId, challengeIds))
+          .orderBy(asc(challengeRelapses.dateKey))
+      : Promise.resolve([]),
   ]);
+  const relapsesByChallenge = groupBy(relapseRows, (row) => row.challengeId);
 
   const entriesByGoal = groupBy(entryRows, (row) => row.goalId);
   const milestonesByGoal = groupBy(milestoneRows, (row) => row.goalId);
@@ -170,6 +188,28 @@ export async function loadState(userId: string): Promise<DashboardState> {
         value: row.value,
       })),
     },
+    challenges: challengeRows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      icon: row.icon,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      benefit:
+        row.benefitUnit && row.benefitPerTime !== null && row.benefitTimesPerMonth !== null
+          ? {
+              unit: row.benefitUnit,
+              perTime: row.benefitPerTime,
+              timesPerMonth: row.benefitTimesPerMonth,
+            }
+          : null,
+      relapses: (relapsesByChallenge.get(row.id) ?? []).map((r) => ({
+        id: r.id,
+        date: r.dateKey,
+        count: r.count,
+      })),
+      createdAt: row.createdAt,
+      ...(row.finishedAt ? { finishedAt: row.finishedAt } : {}),
+    })),
   };
 }
 

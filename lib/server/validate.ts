@@ -108,6 +108,31 @@ const stateSchema = z.object({
 const amount = z.number().finite().min(0).max(100_000);
 const macros = z.object({ calories: amount, protein: amount, fat: amount, carbs: amount });
 
+const challengeBenefit = z
+  .object({
+    unit: z.enum(["usd", "hours"]),
+    perTime: z.number().finite().min(0).max(1_000_000),
+    timesPerMonth: z.number().finite().min(0).max(10_000),
+  })
+  .nullable();
+
+const challengePatchSchema = z.object({
+  name: label,
+  icon,
+  startDate: dateKey,
+  endDate: dateKey.nullable(),
+  benefit: challengeBenefit,
+});
+
+const relapseSchema = z.object({ id, date: dateKey, count: z.number().int().min(1).max(1000) });
+
+const challengeSchema = challengePatchSchema.extend({
+  id,
+  relapses: z.array(relapseSchema).max(10_000),
+  createdAt: timestamp,
+  finishedAt: timestamp.optional(),
+});
+
 export const syncActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("addGoal"), goal: goalSchema }),
   z.object({ type: z.literal("editGoal"), goalId: id, patch: goalPatchSchema }),
@@ -161,5 +186,19 @@ export const syncActionSchema = z.discriminatedUnion("type", [
       value: z.number().finite().min(1).max(1000),
     }),
   }),
+  z.object({ type: z.literal("addChallenge"), challenge: challengeSchema }),
+  z.object({
+    type: z.literal("editChallenge"),
+    challengeId: id,
+    patch: challengePatchSchema,
+  }),
+  z.object({ type: z.literal("removeChallenge"), challengeId: id }),
+  z.object({
+    type: z.literal("setChallengeFinished"),
+    challengeId: id,
+    finishedAt: timestamp.nullable(),
+  }),
+  z.object({ type: z.literal("addRelapse"), challengeId: id, relapse: relapseSchema }),
+  z.object({ type: z.literal("removeRelapse"), challengeId: id, relapseId: id }),
   z.object({ type: z.literal("replace"), state: stateSchema }),
 ]);

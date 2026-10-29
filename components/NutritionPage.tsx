@@ -352,6 +352,10 @@ function MacroCard({
 
 const MONTH_SHORT = new Intl.DateTimeFormat("en-GB", { month: "short" });
 
+/** Weight to the hundredth, without trailing zeros: 82, 82.4, 82.45. */
+const KG = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+const kg = (n: number) => KG.format(n);
+
 function WeightCard({ nutrition, today }: { nutrition: Nutrition; today: string }) {
   const [period, setPeriod] = useState<WeightPeriod>("week");
   const points = useMemo(
@@ -369,9 +373,9 @@ function WeightCard({ nutrition, today }: { nutrition: Nutrition; today: string 
         title="Weight"
         hint={
           latest
-            ? `${formatNumber(latest.value, 1)} kg · ${formatShortDate(latest.date)}${
+            ? `${kg(latest.value)} kg · ${formatShortDate(latest.date)}${
                 points.length > 1
-                  ? ` · ${change > 0 ? "+" : change < 0 ? "−" : "±"}${formatNumber(Math.abs(change), 1)} kg over ${points.length} ${period === "week" ? "weeks" : "months"}`
+                  ? ` · ${change > 0 ? "+" : change < 0 ? "−" : "±"}${kg(Math.abs(change))} kg over ${points.length} ${period === "week" ? "weeks" : "months"}`
                   : ""
               }`
             : undefined
@@ -481,7 +485,7 @@ function LineChart({
                     fill="var(--color-ink-2)"
                     className="tnum"
                   >
-                    {formatNumber(p.value, 1)}
+                    {kg(p.value)}
                   </text>
                   <text
                     x={x(i)}
@@ -521,23 +525,13 @@ function CaloriesChart({
   const plan = nutrition.plan?.calories ?? null;
   const max = Math.max(plan ?? 0, ...days.map((d) => d.calories), 1) * 1.1;
   const height = 160;
-  const logged = days.filter((d) => d.calories > 0);
-  const average = logged.length
-    ? logged.reduce((sum, d) => sum + d.calories, 0) / logged.length
-    : 0;
 
   return (
     <Card aria-labelledby="calories-heading">
       <CardHead
         id="calories-heading"
         title="Calories by day"
-        hint={[
-          `Last ${CHART_DAYS} days`,
-          logged.length ? `average ${formatNumber(Math.round(average))} kcal` : null,
-          plan !== null ? `dashed line is the plan, ${formatNumber(plan)} kcal` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+
       />
       <div className="p-4 sm:p-5">
         <div className="relative" style={{ height }}>
@@ -546,11 +540,16 @@ function CaloriesChart({
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-ink-2"
               style={{ bottom: (plan / max) * height }}
-            />
+            >
+              {/* The plan's figure on the line itself, on a chip so the bars
+                  behind it never swallow it. */}
+              <span className="absolute right-0 top-0 -translate-y-1/2 rounded-[var(--radius-badge)] bg-ink px-1.5 py-0.5 text-[11.5px] font-medium text-surface tnum">
+                {formatNumber(plan)}
+              </span>
+            </div>
           )}
           <div className="flex h-full items-end gap-1 sm:gap-1.5">
             {days.map((d) => {
-              const over = plan !== null && d.calories > plan;
               const isSelected = d.date === selected;
               return (
                 <button
@@ -567,11 +566,7 @@ function CaloriesChart({
                     style={{
                       height: `${(d.calories / max) * 100}%`,
                       minHeight: d.calories > 0 ? 3 : 0,
-                      backgroundColor: isSelected
-                        ? "var(--color-ink)"
-                        : over
-                          ? "var(--color-neg-600)"
-                          : "var(--color-accent-500)",
+                      backgroundColor: "var(--color-accent-500)",
                     }}
                   />
                 </button>
@@ -611,6 +606,7 @@ function NumberField({
   onChange,
   placeholder,
   autoFocus,
+  decimal,
 }: {
   id: string;
   label: string;
@@ -618,15 +614,20 @@ function NumberField({
   onChange: (v: string) => void;
   placeholder?: string;
   autoFocus?: boolean;
+  /**
+   * A text field with the decimal keypad, so "82,45" typed on a comma-locale
+   * keyboard is accepted rather than silently emptied by a number input.
+   */
+  decimal?: boolean;
 }) {
   return (
     <Field label={label} htmlFor={id}>
       <Input
         id={id}
         size="lg"
-        type="number"
-        step="any"
-        min={0}
+        {...(decimal
+          ? { type: "text", pattern: "[0-9]*[.,]?[0-9]*" }
+          : { type: "number", step: "any", min: 0 })}
         inputMode="decimal"
         value={value}
         placeholder={placeholder}
@@ -762,13 +763,14 @@ function WeightForm({
   const [date, setDate] = useState(initialDate);
   const last = latestWeight(state.nutrition.weights);
   const [value, setValue] = useState("");
-  const kg = num(value);
-  const valid = Number.isFinite(kg) && kg > 0;
+  // Up to the hundredth: 82.45 kg.
+  const weight = Math.round(num(value) * 100) / 100;
+  const valid = Number.isFinite(weight) && weight > 0;
 
   function submit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!valid) return;
-    dispatch({ type: "logWeight", date, value: kg });
+    dispatch({ type: "logWeight", date, value: weight });
     onClose();
   }
 
@@ -803,7 +805,8 @@ function WeightForm({
           label="Weight, kg"
           value={value}
           onChange={setValue}
-          placeholder={last ? formatNumber(last.value, 1) : "0"}
+          placeholder={last ? kg(last.value) : "82.45"}
+          decimal
           autoFocus
         />
         <button type="submit" hidden />

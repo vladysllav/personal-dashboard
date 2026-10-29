@@ -28,7 +28,8 @@ export type IconName =
   | "pin"
   | "signOut"
   | "spinner"
-  | "food";
+  | "food"
+  | "flag";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   today: (
@@ -110,6 +111,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M5.4 3v5.1a2.1 2.1 0 0 0 4.2 0V3M7.5 3v18" />
       <ellipse cx="16.5" cy="7.2" rx="2.7" ry="4.2" />
       <path d="M16.5 11.4V21" />
+    </>
+  ),
+  flag: (
+    <>
+      {/* A pennant on a pole — a line held. */}
+      <path d="M5.4 21V3.6" />
+      <path d="M5.4 4.2h11.4l-2.4 4.2 2.4 4.2H5.4" />
     </>
   ),
   spinner: (

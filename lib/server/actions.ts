@@ -4,6 +4,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import {
+  challengeRelapses,
+  challenges,
   goalEntries,
   goals,
   habitMarks,
@@ -14,6 +16,7 @@ import {
   preferences,
   weightEntries,
 } from "@/lib/db/schema";
+import type { ChallengeBenefit } from "@/lib/types";
 import { syncActionSchema } from "./validate";
 import {
   insertGoal,
@@ -251,6 +254,97 @@ export async function applyAction(input: unknown): Promise<void> {
       return;
     }
 
+    case "addChallenge": {
+      const c = action.challenge;
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(challenges)
+          .values({
+            id: c.id,
+            userId,
+            name: c.name,
+            icon: c.icon,
+            startDate: c.startDate,
+            endDate: c.endDate,
+            ...benefitColumns(c.benefit),
+            createdAt: c.createdAt,
+            finishedAt: c.finishedAt ?? null,
+          })
+          .onConflictDoNothing();
+        if (c.relapses.length) {
+          await tx
+            .insert(challengeRelapses)
+            .values(
+              c.relapses.map((r) => ({
+                id: r.id,
+                challengeId: c.id,
+                dateKey: r.date,
+                count: r.count,
+              })),
+            )
+            .onConflictDoNothing();
+        }
+      });
+      return;
+    }
+
+    case "editChallenge": {
+      await db
+        .update(challenges)
+        .set({
+          name: action.patch.name,
+          icon: action.patch.icon,
+          startDate: action.patch.startDate,
+          endDate: action.patch.endDate,
+          ...benefitColumns(action.patch.benefit),
+        })
+        .where(and(eq(challenges.id, action.challengeId), eq(challenges.userId, userId)));
+      return;
+    }
+
+    case "removeChallenge": {
+      await db
+        .delete(challenges)
+        .where(and(eq(challenges.id, action.challengeId), eq(challenges.userId, userId)));
+      return;
+    }
+
+    case "setChallengeFinished": {
+      await db
+        .update(challenges)
+        .set({ finishedAt: action.finishedAt })
+        .where(and(eq(challenges.id, action.challengeId), eq(challenges.userId, userId)));
+      return;
+    }
+
+    case "addRelapse": {
+      await requireChallenge(userId, action.challengeId);
+      await db
+        .insert(challengeRelapses)
+        .values({
+          id: action.relapse.id,
+          challengeId: action.challengeId,
+          dateKey: action.relapse.date,
+          count: action.relapse.count,
+        })
+        // A retried relapse must not count twice.
+        .onConflictDoNothing();
+      return;
+    }
+
+    case "removeRelapse": {
+      await requireChallenge(userId, action.challengeId);
+      await db
+        .delete(challengeRelapses)
+        .where(
+          and(
+            eq(challengeRelapses.id, action.relapseId),
+            eq(challengeRelapses.challengeId, action.challengeId),
+          ),
+        );
+      return;
+    }
+
     case "replace": {
       // Loading the sample set is a deliberate wipe-and-fill of everything.
       await db.transaction(async (tx) => {
@@ -290,6 +384,24 @@ async function requireGoal(userId: string, goalId: string): Promise<void> {
     .where(and(eq(goals.id, goalId), eq(goals.userId, userId)))
     .limit(1);
   if (!rows.length) throw new Error("Goal not found.");
+}
+
+async function requireChallenge(userId: string, challengeId: string): Promise<void> {
+  const rows = await db
+    .select({ id: challenges.id })
+    .from(challenges)
+    .where(and(eq(challenges.id, challengeId), eq(challenges.userId, userId)))
+    .limit(1);
+  if (!rows.length) throw new Error("Challenge not found.");
+}
+
+/** The benefit as its three columns — all null when there is none. */
+function benefitColumns(benefit: ChallengeBenefit | null) {
+  return {
+    benefitUnit: benefit?.unit ?? null,
+    benefitPerTime: benefit?.perTime ?? null,
+    benefitTimesPerMonth: benefit?.timesPerMonth ?? null,
+  };
 }
 
 async function requireHabit(userId: string, habitId: string): Promise<void> {

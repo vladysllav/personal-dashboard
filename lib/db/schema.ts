@@ -10,7 +10,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
-import type { FrequencyUnit, GoalKind, GoalView, StepUnit } from "../types";
+import type { ChallengeUnit, FrequencyUnit, GoalKind, GoalView, StepUnit } from "../types";
 
 /* ---------- Auth.js tables ----------
  * Column names here are dictated by @auth/drizzle-adapter and must stay
@@ -254,4 +254,43 @@ export const weightEntries = pgTable(
     value: doublePrecision("value").notNull(),
   },
   (t) => [index("weight_entries_user_id_idx").on(t.userId)],
+);
+
+/* ---------- Challenges ---------- */
+
+export const challenges = pgTable(
+  "challenges",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seq: serial("seq").notNull(),
+    name: text("name").notNull(),
+    icon: text("icon").notNull().default(""),
+    startDate: text("start_date").notNull(),
+    /** Last day, inclusive. Null for no end. */
+    endDate: text("end_date"),
+    /** Null on all three when the challenge tracks no benefit. */
+    benefitUnit: text("benefit_unit").$type<ChallengeUnit>(),
+    benefitPerTime: doublePrecision("benefit_per_time"),
+    benefitTimesPerMonth: doublePrecision("benefit_times_per_month"),
+    createdAt: text("created_at").notNull(),
+    finishedAt: text("finished_at"),
+  },
+  (t) => [index("challenges_user_id_idx").on(t.userId)],
+);
+
+export const challengeRelapses = pgTable(
+  "challenge_relapses",
+  {
+    id: text("id").primaryKey(),
+    challengeId: text("challenge_id")
+      .notNull()
+      .references(() => challenges.id, { onDelete: "cascade" }),
+    /** Local date, YYYY-MM-DD. */
+    dateKey: text("date_key").notNull(),
+    count: integer("count").notNull().default(1),
+  },
+  (t) => [index("challenge_relapses_challenge_id_idx").on(t.challengeId)],
 );

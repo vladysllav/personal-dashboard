@@ -146,11 +146,51 @@ export type Nutrition = {
   weights: WeightEntry[];
 };
 
+/** What a challenge gives back, per time you would have done the thing. */
+export type ChallengeUnit = "usd" | "hours";
+
+export type ChallengeBenefit = {
+  unit: ChallengeUnit;
+  /** Dollars or hours one time cost you. */
+  perTime: number;
+  /** How many times a month you used to do it. */
+  timesPerMonth: number;
+};
+
+/** A slip, logged on the day it happened. It ends the streak, not the challenge. */
+export type Relapse = {
+  id: string;
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+  /** How many times, that day. */
+  count: number;
+};
+
+/**
+ * A stretch of time spent *not* doing something. Nothing is logged on a good
+ * day — every day passes as clean unless a relapse says otherwise.
+ */
+export type Challenge = {
+  id: string;
+  name: string;
+  icon: string;
+  /** Local date, YYYY-MM-DD. */
+  startDate: string;
+  /** Last day, inclusive. Null for "as long as I hold". */
+  endDate: string | null;
+  benefit: ChallengeBenefit | null;
+  relapses: Relapse[];
+  createdAt: string;
+  /** Set when ended by hand. A challenge past its end date is done on its own. */
+  finishedAt?: string;
+};
+
 export type DashboardState = {
   goals: Goal[];
   habits: Habit[];
   prefs: Preferences;
   nutrition: Nutrition;
+  challenges: Challenge[];
 };
 
 export type GoalStatus =

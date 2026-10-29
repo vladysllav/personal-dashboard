@@ -10,6 +10,8 @@ import { HabitDetail } from "@/components/HabitDetail";
 import { HabitStats } from "@/components/HabitStats";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { NutritionPage } from "@/components/NutritionPage";
+import { ChallengesPage } from "@/components/ChallengesPage";
+import { ChallengeDetail } from "@/components/ChallengeDetail";
 import { addDays, todayKey } from "@/lib/dates";
 import { StoreProvider, buildSample } from "@/lib/store";
 
@@ -22,6 +24,45 @@ function Body() {
   // the rings and the profile row are reviewable without a signed-in session.
   const pins = Number(params.get("pins") ?? 2);
   state.prefs.pinnedGoalIds = state.goals.slice(0, pins).map((g) => g.id);
+  {
+    // Two running challenges and one finished, for the challenges views.
+    const today = todayKey();
+    state.challenges = [
+      {
+        id: "c1",
+        name: "No hookah",
+        icon: "💨",
+        startDate: addDays(today, -45),
+        endDate: addDays(today, 44),
+        benefit: { unit: "usd", perTime: 20, timesPerMonth: 8 },
+        relapses: [
+          { id: "r1", date: addDays(today, -30), count: 1 },
+          { id: "r2", date: addDays(today, -12), count: 2 },
+        ],
+        createdAt: today,
+      },
+      {
+        id: "c2",
+        name: "No social media",
+        icon: "📱",
+        startDate: addDays(today, -9),
+        endDate: null,
+        benefit: { unit: "hours", perTime: 1.5, timesPerMonth: 30 },
+        relapses: [],
+        createdAt: today,
+      },
+      {
+        id: "c3",
+        name: "No sugar",
+        icon: "🍬",
+        startDate: addDays(today, -60),
+        endDate: addDays(today, -31),
+        benefit: null,
+        relapses: [{ id: "r3", date: addDays(today, -40), count: 1 }],
+        createdAt: today,
+      },
+    ];
+  }
   if (view === "nutrition") {
     // A plan, two weeks of eating and ten weeks of weigh-ins.
     const today = todayKey();
@@ -53,6 +94,10 @@ function Body() {
           <HabitStats />
         ) : view === "habit" ? (
           <HabitDetail habitId={state.habits[Number(params.get("habit") ?? 0)]!.id} />
+        ) : view === "challenges" ? (
+          <ChallengesPage />
+        ) : view === "challenge" ? (
+          <ChallengeDetail challengeId={params.get("id") ?? "c1"} />
         ) : view === "nutrition" ? (
           <NutritionPage />
         ) : view === "loading" ? (
