@@ -1,5 +1,5 @@
-import { ON_PACE_TOLERANCE } from "./constants";
-import { deadlineKey, stepsElapsed } from "./dates";
+import { paceTolerance } from "./constants";
+import { daysBetween, deadlineKey, stepsElapsed } from "./dates";
 import type { Goal, GoalStatus } from "./types";
 
 export type GoalDerived = {
@@ -9,13 +9,17 @@ export type GoalDerived = {
   span: number;
   /** 0..1+, normalised so descending goals progress upward like any other. */
   progress: number;
-  /** 0..1. Where the original plan says you should be by now. */
+  /**
+   * 0..1. Where the original plan says you should be by now, measured in days
+   * rather than whole steps — a monthly goal is owed something on day 13, not
+   * only once its first month closes.
+   */
   plannedProgress: number;
   /** The value the plan expects right now. */
   expectedValue: number;
   elapsedSteps: number;
   remainingSteps: number;
-  /** Steps ahead (+) or behind (-). The headline number. */
+  /** Steps ahead (+) or behind (-), fractional. The headline number. */
   stepsDelta: number;
   /** Percentage points of the whole goal, ahead (+) or behind (-). */
   pointsDelta: number;
@@ -48,10 +52,12 @@ export function deriveGoal(goal: Goal, todayKey: string): GoalDerived {
     N,
   );
   const remainingSteps = N - elapsedSteps;
+  const deadline = deadlineKey(goal.startDate, N, goal.stepUnit);
+  const daysIn = daysBetween(goal.startDate, todayKey);
 
   // Guard the degenerate goal (A === B) rather than dividing by zero.
   const progress = span === 0 ? 1 : (current - goal.pointA) / span;
-  const plannedProgress = N === 0 ? 1 : elapsedSteps / N;
+  const plannedProgress = planFraction(goal.startDate, deadline, todayKey);
   const expectedValue = goal.pointA + span * plannedProgress;
 
   const stepsDelta = (progress - plannedProgress) * N;
@@ -78,29 +84,39 @@ export function deriveGoal(goal: Goal, todayKey: string): GoalDerived {
     remaining,
     status: deriveStatus({
       progress,
-      elapsedSteps,
+      daysIn,
       remainingSteps,
       stepsDelta,
-      entries: goal.entries.length,
+      tolerance: paceTolerance(goal.stepUnit),
     }),
-    deadline: deadlineKey(goal.startDate, N, goal.stepUnit),
+    deadline,
   };
+}
+
+/**
+ * Share of the goal's calendar time already behind you, 0..1. A goal with no
+ * entries still has time passing, and this is what makes it read as behind.
+ */
+export function planFraction(startKey: string, deadline: string, todayKey: string): number {
+  const total = daysBetween(startKey, deadline);
+  if (total <= 0) return 1;
+  return Math.min(1, Math.max(0, daysBetween(startKey, todayKey) / total));
 }
 
 function deriveStatus(input: {
   progress: number;
-  elapsedSteps: number;
+  daysIn: number;
   remainingSteps: number;
   stepsDelta: number;
-  entries: number;
+  tolerance: number;
 }): GoalStatus {
   if (input.progress >= 1) return "complete";
   if (input.remainingSteps <= 0) return "overdue";
-  // Before the first step closes, the plan expects nothing — so nothing can be
-  // "behind". Without this, every new goal opens on a -0% / divide-by-zero read.
-  if (input.elapsedSteps === 0) return "not-started";
-  if (input.stepsDelta > ON_PACE_TOLERANCE) return "ahead";
-  if (input.stepsDelta < -ON_PACE_TOLERANCE) return "behind";
+  // On the start day the plan expects nothing — so nothing can be "behind".
+  // From the next day on, an empty goal is simply at zero against the plan.
+  if (input.daysIn <= 0) return "not-started";
+  if (input.stepsDelta > input.tolerance) return "ahead";
+  if (input.stepsDelta < -input.tolerance) return "behind";
   return "on-pace";
 }
 

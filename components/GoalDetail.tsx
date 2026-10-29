@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { STEP_NOUN, formatLongDate, formatShortDate, isoAtDate } from "@/lib/dates";
+import { formatShortDate, isoAtDate } from "@/lib/dates";
 import { describeGoal } from "@/lib/describe";
-import { formatNumber, formatValue } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import { deriveGoal } from "@/lib/goals";
 import { goalSeries } from "@/lib/series";
 import { daysLeft, goalWeeks, neededPerWeek, plannedPerWeek } from "@/lib/weekly";
@@ -62,7 +62,7 @@ export function GoalDetail({ goalId }: { goalId: string }) {
   const copy = describeGoal(goal, derived);
   const weekly = neededPerWeek(goal, derived, today);
   const left = daysLeft(derived, today);
-  const remaining = Math.max(0, derived.remaining * (Math.sign(derived.span) || 1));
+  const planned = plannedPerWeek(goal, derived);
   const finished = Boolean(goal.finishedAt);
 
   function finish() {
@@ -83,12 +83,6 @@ export function GoalDetail({ goalId }: { goalId: string }) {
       <PageHeader
         back={{ href: "/goals", label: "Goals" }}
         title={goal.name}
-        subtitle={`${formatValue(goal.pointA, goal.unit)} → ${formatValue(
-          goal.pointB,
-          goal.unit,
-        )} · ${goal.totalSteps} ${STEP_NOUN[goal.stepUnit][1]} · ends ${formatLongDate(
-          derived.deadline,
-        )}`}
         actions={
           !editing ? (
             <>
@@ -180,16 +174,13 @@ export function GoalDetail({ goalId }: { goalId: string }) {
               plannedProgress={derived.plannedProgress}
               status={derived.status}
               size={136}
-              caption={
-                remaining > 0
-                  ? `${formatNumber(remaining)} to go`
-                  : "target reached"
-              }
             />
+            {/* The pace set on day one, beside the pace needed now, so the two
+                weekly figures read as a comparison. */}
             <Figure
-              label="Target"
-              value={formatNumber(goal.pointB)}
-              caption={`by ${formatShortDate(derived.deadline)}`}
+              label="Planned pace"
+              value={formatNumber(planned)}
+              caption="per week"
             />
           </div>
         </Card>
@@ -197,7 +188,7 @@ export function GoalDetail({ goalId }: { goalId: string }) {
         {goal.kind !== "milestone" && (
           <GoalWeekChart
             weeks={goalWeeks(goal, today)}
-            target={plannedPerWeek(goal, derived)}
+            target={planned}
           />
         )}
 

@@ -7,8 +7,10 @@ import { useStore } from "@/lib/store";
 import type { Goal, GoalEntry } from "@/lib/types";
 import { Button, Card, CardHead, Empty, IconButton, Input } from "./ui";
 
+const LOG_LIMIT = 5;
+
 /**
- * Every entry ever logged against a goal, newest first, each one editable in
+ * The latest entries logged against a goal, newest first, each one editable in
  * place (value + date) or removable. Milestone goals keep no value entries, so
  * this renders nothing for them.
  */
@@ -19,7 +21,10 @@ export function EntryLog({ goal }: { goal: Goal }) {
 
   // A copy sorted by date desc; the stored array keeps insertion order so
   // "undo last" elsewhere still means "the one just added".
-  const entries = [...goal.entries].sort((a, b) => (a.at < b.at ? 1 : -1));
+  // Only the latest few: older entries are already in the charts above.
+  const entries = [...goal.entries]
+    .sort((a, b) => (a.at < b.at ? 1 : -1))
+    .slice(0, LOG_LIMIT);
 
   return (
     <Card className="overflow-hidden" aria-labelledby="log-history">
@@ -27,9 +32,9 @@ export function EntryLog({ goal }: { goal: Goal }) {
         id="log-history"
         title="Log history"
         right={
-          entries.length > 0 ? (
+          goal.entries.length > 0 ? (
             <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-[12.5px] text-ink-2 tnum">
-              {entries.length}
+              {goal.entries.length}
             </span>
           ) : undefined
         }

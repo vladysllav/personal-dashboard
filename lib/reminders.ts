@@ -45,7 +45,9 @@ const ORDER: Record<Urgency, number> = { overdue: 0, due: 1, optional: 2, done: 
  */
 function habitReminder(habit: Habit, todayKey: string): Reminder | null {
   const { status, detail } = habitDay(habit, todayKey);
-  if (status === "off") return null;
+  // "Optional" is a quota habit whose spacing says not yet — e.g. the gym the
+  // day after a session. It is not today's business, so it is not on the list.
+  if (status === "off" || status === "optional") return null;
   return {
     id: `habit:${habit.id}`,
     title: habit.name,

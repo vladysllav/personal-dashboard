@@ -10,3 +10,13 @@ export const ON_PACE_TOLERANCE = 0.75;
 
 /** Where state is persisted. Bumping the suffix discards incompatible data. */
 export const STORAGE_KEY = "personal-dashboard:v1";
+
+/**
+ * The on-pace band in a goal's own steps. A month-long step made 0.75 of a
+ * step mean three weeks of slack, so a monthly goal sat "on pace" for most of
+ * its first month with nothing logged. The band is capped at a week instead.
+ */
+export function paceTolerance(stepUnit: "day" | "week" | "month"): number {
+  const stepDays = stepUnit === "day" ? 1 : stepUnit === "week" ? 7 : 30.44;
+  return Math.min(ON_PACE_TOLERANCE, 7 / stepDays);
+}

@@ -5,7 +5,7 @@ import { STEP_NOUN } from "@/lib/dates";
 import { formatValue } from "@/lib/format";
 import type { GoalSeries } from "@/lib/series";
 import type { GoalKind, StepUnit } from "@/lib/types";
-import { Card, CardHead, Empty, Note, Seg } from "./ui";
+import { Card, CardHead, Empty, Seg } from "./ui";
 
 type Mode = "cumulative" | "step";
 
@@ -29,6 +29,9 @@ export function GoalChart({
   const [stepPlural] = [STEP_NOUN[stepUnit][1]];
 
   const hasData = series.points.some((p) => p.stepValue !== null);
+  // The running total has something to say as soon as time has passed: an
+  // empty goal is a flat line at the start, against a plan that kept moving.
+  const canPlot = hasData || (mode === "cumulative" && series.nowStep > 0);
 
   return (
     <Card aria-labelledby="chart-heading">
@@ -52,7 +55,7 @@ export function GoalChart({
         }
       />
 
-      {hasData ? (
+      {canPlot ? (
         <div className="p-4 sm:p-5">
           <Plot
             series={series}
@@ -70,16 +73,6 @@ export function GoalChart({
         </Empty>
       )}
 
-      {/* The footnote follows the mode: in the per-step view there is no plan
-          line to explain, and a measure goal has no reference line at all. */}
-      <Note>
-        The x axis counts {stepPlural} from the start date.{" "}
-        {mode === "cumulative"
-          ? "The plan line is the pace you committed to on day one."
-          : kind === "accumulate"
-            ? `Each bar is what you logged in that ${STEP_NOUN[stepUnit][0]}, against the reference amount.`
-            : `Each point is a reading, placed on the ${STEP_NOUN[stepUnit][0]} it was taken.`}
-      </Note>
     </Card>
   );
 }
@@ -188,6 +181,7 @@ function Plot({
         pointB,
         ...points.map((p) => p.planned),
         ...points.filter((p) => p.elapsed).map((p) => p.cumulative),
+        series.nowValue,
       ];
     } else {
       const logged = points
@@ -359,7 +353,11 @@ function CumulativeLayer({
 
   const planPath = points.map((p) => `${x(p.step)},${y(p.planned)}`).join(" ");
 
-  const done = points.filter((p) => p.elapsed);
+  // Closed steps, then today: the line always reaches the present.
+  const done = points
+    .filter((p) => p.elapsed && p.step < series.nowStep)
+    .map((p) => ({ step: p.step, cumulative: p.cumulative }));
+  done.push({ step: series.nowStep, cumulative: series.nowValue });
   const first = done[0];
   const last = done[done.length - 1];
   const actualPath = done.map((p) => `${x(p.step)},${y(p.cumulative)}`).join(" ");

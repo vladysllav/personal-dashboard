@@ -1,18 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   WEEKDAY_SHORT,
   addDays,
+  addMonths,
   formatLongDate,
+  formatMonthYear,
   formatShortDate,
+  monthKey,
   weekdayIndex,
 } from "@/lib/dates";
-import { dayStats, overallStats, overallStreaks, weekStats } from "@/lib/habits";
+import { dayStats, monthStats, overallStats, overallStreaks, weekStats } from "@/lib/habits";
 import type { Habit } from "@/lib/types";
 import { BarChart, type Bar } from "./BarChart";
 import { Donut } from "./Donut";
-import { Card, CardHead } from "./ui";
+import { Card, CardHead, IconButton } from "./ui";
 
 /** Days shown, ending on today. */
 const DAYS = 4;
@@ -41,6 +44,14 @@ export function HabitOverview({
   today: string;
 }) {
   const overall = useMemo(() => overallStats(habits, today), [habits, today]);
+
+  // The ring is scored per calendar month and starts on the current one; the
+  // arrows step back through earlier months, never before the first habit.
+  const [month, setMonth] = useState(() => `${monthKey(today)}-01`);
+  const monthly = useMemo(() => monthStats(habits, month, today), [habits, month, today]);
+  const firstMonth = monthKey(habits.map((h) => h.startDate).sort()[0] ?? today);
+  const canBack = monthKey(month) > firstMonth;
+  const canForward = !monthly.current;
   const streaks = useMemo(() => overallStreaks(habits, today), [habits, today]);
 
   const days = useMemo(
@@ -90,16 +101,34 @@ export function HabitOverview({
       <Card className="flex flex-col" aria-labelledby="overall-heading">
         <CardHead
           id="overall-heading"
-          title="All habits"
+          title={formatMonthYear(month)}
+          hint={
+            monthly.current
+              ? `${overall.markedToday} of ${overall.dueToday} marked today`
+              : "Month closed"
+          }
           right={
-            <span className="text-[11.5px] text-ink-3 tnum">
-              {overall.markedToday} of {overall.dueToday} marked today
-            </span>
+            <>
+              <IconButton
+                name="chevronLeft"
+                label="Previous month"
+                disabled={!canBack}
+                onClick={() => setMonth(addMonths(month, -1))}
+                className="disabled:opacity-30"
+              />
+              <IconButton
+                name="chevronRight"
+                label="Next month"
+                disabled={!canForward}
+                onClick={() => setMonth(addMonths(month, 1))}
+                className="disabled:opacity-30"
+              />
+            </>
           }
         />
         <div className="flex flex-1 flex-wrap items-center justify-center gap-5 p-4 sm:p-5">
           <Donut
-            progress={overall.adherence}
+            progress={monthly.adherence}
             plannedProgress={0}
             // Always the accent. The ring reports a share, not a verdict:
             // habits lost their ahead/behind reading everywhere else on this
@@ -107,14 +136,14 @@ export function HabitOverview({
             // quietly put it back.
             status="on-pace"
             size={140}
-            caption="kept so far"
+            caption={monthly.current ? "kept this month" : "kept that month"}
           />
           <dl className="flex min-w-[112px] flex-1 flex-col gap-3">
             <Metric
               label="Days kept"
-              value={String(overall.done)}
+              value={String(monthly.done)}
               // A tile is no place for a fraction: the exact figure is in the note.
-              unit={`of ${Math.round(overall.expected)} asked`}
+              unit={`of ${Math.round(monthly.expected)} asked`}
             />
             {/* The whole-board streak replaces the finished-plans count that
                 used to sit here. Habits have no finish line any more, and

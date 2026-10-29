@@ -1,6 +1,6 @@
 "use client";
 
-import { reminderCounts, todaysReminders, type Reminder, type Urgency } from "@/lib/reminders";
+import { reminderCounts, todaysReminders, type Reminder } from "@/lib/reminders";
 import { useStore } from "@/lib/store";
 import { Icon } from "./Icon";
 import { Card, CardHead, Empty } from "./ui";
@@ -60,18 +60,6 @@ export function TodayReminders({ today }: { today: string }) {
   );
 }
 
-/**
- * Colour says how late a thing is; the shape of the box says so too, because
- * yellow and coral at a tint are close in weight and the difference has to
- * survive being glanced at.
- */
-const TONE: Record<Urgency, { chip: string; label: string }> = {
-  overdue: { chip: "bg-neg-600 text-ink", label: "late" },
-  due: { chip: "bg-accent-600 text-ink", label: "today" },
-  optional: { chip: "bg-surface-3 text-ink-2", label: "optional" },
-  done: { chip: "bg-accent-50 text-accent-700", label: "done" },
-};
-
 function ReminderRow({
   item,
   onToggle,
@@ -79,7 +67,6 @@ function ReminderRow({
   item: Reminder;
   onToggle: () => void;
 }) {
-  const tone = TONE[item.urgency];
   const done = item.urgency === "done";
 
   return (
@@ -116,12 +103,6 @@ function ReminderRow({
           <span className="mt-0.5 block truncate text-[11.5px] text-ink-3">
             {item.detail}
           </span>
-        </span>
-
-        <span
-          className={`shrink-0 rounded-[var(--radius-badge)] px-1.5 py-0.5 text-[11px] font-medium ${tone.chip}`}
-        >
-          {tone.label}
         </span>
       </button>
     </li>

@@ -14,7 +14,7 @@ import { Icon } from "./Icon";
 import { PaceBar } from "./PaceBar";
 import { StatusBadge, statusText } from "./StatusBadge";
 import { TickChip } from "./TickChip";
-import { Card, CardHead, Empty, IconButton, Seg } from "./ui";
+import { Card, Empty, IconButton, Seg } from "./ui";
 
 /**
  * Every running goal, ranked by what needs attention first. Two readings of
@@ -47,52 +47,61 @@ export function GoalSection({
   const empty = ranked.length === 0 && !adding && !editing;
 
   return (
-    <Card className="overflow-hidden" aria-labelledby="goals-heading">
-      <CardHead
-        id="goals-heading"
-        title={title}
-        right={
-          ranked.length > 0 ? (
-            <Seg
-              label="Goal layout"
-              value={view}
-              onChange={(v) => dispatch({ type: "setGoalView", view: v })}
-              options={[
-                { value: "bar", label: "Pace", icon: "bars" },
-                { value: "ring", label: "Rings", icon: "ring" },
-              ]}
-            />
-          ) : undefined
-        }
-      />
+    <section aria-labelledby="goals-heading" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h2 id="goals-heading" className="text-[13.5px] font-medium text-ink">
+          {title}
+        </h2>
+        {ranked.length > 0 && (
+          <Seg
+            label="Goal layout"
+            value={view}
+            onChange={(v) => dispatch({ type: "setGoalView", view: v })}
+            options={[
+              { value: "bar", label: "Pace", icon: "bars" },
+              { value: "ring", label: "Rings", icon: "ring" },
+            ]}
+          />
+        )}
+      </div>
 
       {adding && (
-        <GoalForm
-          mode="add"
-          onCancel={() => setAdding(false)}
-          onAdd={(goal) => {
-            dispatch({ type: "addGoal", goal });
-            setAdding(false);
-          }}
-        />
+        <Card className="overflow-hidden">
+          <GoalForm
+            mode="add"
+            className="bg-surface-2 p-4 sm:p-5"
+            onCancel={() => setAdding(false)}
+            onAdd={(goal) => {
+              dispatch({ type: "addGoal", goal });
+              setAdding(false);
+            }}
+          />
+        </Card>
       )}
 
       {editing && (
-        <GoalForm
-          mode="edit"
-          initial={editing}
-          onCancel={() => setEditingId(null)}
-          onEdit={(patch) => {
-            dispatch({ type: "editGoal", goalId: editing.id, patch });
-            setEditingId(null);
-          }}
-        />
+        <Card className="overflow-hidden">
+          <GoalForm
+            mode="edit"
+            className="bg-surface-2 p-4 sm:p-5"
+            initial={editing}
+            onCancel={() => setEditingId(null)}
+            onEdit={(patch) => {
+              dispatch({ type: "editGoal", goalId: editing.id, patch });
+              setEditingId(null);
+            }}
+          />
+        </Card>
       )}
 
+      {/* One card per goal: they are separate commitments, and a shared box
+          with dashed rules made them read as one table. */}
       {empty ? (
-        <Empty>No goals yet.</Empty>
+        <Card>
+          <Empty>No goals yet.</Empty>
+        </Card>
       ) : view === "ring" ? (
-        <ul className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {ranked.map(({ goal, derived }) => (
             <RingCell
               key={goal.id}
@@ -104,7 +113,7 @@ export function GoalSection({
           ))}
         </ul>
       ) : (
-        <ul className="divide-y divide-dashed divide-line">
+        <ul className="flex flex-col gap-3">
           {ranked.map(({ goal, derived }) => (
             <GoalRow
               key={goal.id}
@@ -129,7 +138,7 @@ export function GoalSection({
           }}
         />
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -210,7 +219,7 @@ function GoalRow({
   const copy = describeGoal(goal, derived);
 
   return (
-    <li className="px-4 py-3.5 sm:px-5">
+    <Card as="li" className="px-4 py-3.5 sm:px-5">
       <div className="grid items-center gap-x-5 gap-y-3 lg:grid-cols-[minmax(150px,1fr)_minmax(180px,1.4fr)_minmax(150px,0.9fr)_auto]">
         <div className="min-w-0">
           <h3 className="min-w-0">
@@ -270,7 +279,7 @@ function GoalRow({
           ))}
         </ul>
       )}
-    </li>
+    </Card>
   );
 }
 
@@ -288,7 +297,7 @@ function RingCell({
   const copy = describeGoal(goal, derived);
 
   return (
-    <li className="flex flex-col bg-surface p-4 sm:p-5">
+    <Card as="li" className="flex flex-col p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <h3 className="min-w-0">
           <GoalLink goal={goal} />
@@ -315,6 +324,6 @@ function RingCell({
           </div>
         </div>
       </div>
-    </li>
+    </Card>
   );
 }

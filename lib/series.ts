@@ -1,4 +1,5 @@
-import { stepsElapsed, toDateKey } from "./dates";
+import { deadlineKey, stepsElapsed, toDateKey } from "./dates";
+import { currentValue, planFraction } from "./goals";
 import type { Goal } from "./types";
 
 /**
@@ -28,6 +29,14 @@ export type GoalSeries = {
   pointB: number;
   totalSteps: number;
   elapsedSteps: number;
+  /**
+   * Where today sits on the step axis, fractional. The actual line always runs
+   * to here, so a goal with nothing logged reads as flat at its start value
+   * rather than as an empty chart.
+   */
+  nowStep: number;
+  /** The value right now, including entries in the step still open. */
+  nowValue: number;
   /** The reference amount to move each step: |B − A| / N. */
   referencePerStep: number;
   /** Weight loss, debt paydown — target below start. Same maths, mirrored read. */
@@ -91,6 +100,9 @@ export function goalSeries(goal: Goal, todayKey: string): GoalSeries {
     pointB: goal.pointB,
     totalSteps: N,
     elapsedSteps: elapsed,
+    nowStep:
+      N * planFraction(goal.startDate, deadlineKey(goal.startDate, N, goal.stepUnit), todayKey),
+    nowValue: currentValue(goal),
     referencePerStep: Math.abs(span) / N,
     descending: span < 0,
   };

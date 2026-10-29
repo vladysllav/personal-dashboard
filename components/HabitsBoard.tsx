@@ -12,7 +12,7 @@ import { PageHeader } from "./AppShell";
 import { HabitForm } from "./HabitForm";
 import { Icon } from "./Icon";
 import { WeekStrip } from "./WeekStrip";
-import { Button, Card, CardHead, Empty } from "./ui";
+import { Button, Card, CardHead, Empty, Seg } from "./ui";
 
 /**
  * The habits screen: a week, and what that day asks of you.
@@ -31,15 +31,23 @@ export function HabitsBoard({ today }: { today: string }) {
   const [selected, setSelected] = useState(today);
   const [adding, setAdding] = useState(false);
 
-  // Every habit, every day — the ones this day does not ask for sit last, still
-  // tickable, rather than vanishing from a list you came to see whole.
-  const items = useMemo(() => allHabitsForDay(habits, selected), [habits, selected]);
+  // By default only what the day actually asks for: scheduled habits on their
+  // days, and quota habits once their spacing says it is time (3× a week is
+  // every other day). "All" brings back the rest, still tickable.
+  const [scope, setScope] = useState<"due" | "all">("due");
+  const everything = useMemo(() => allHabitsForDay(habits, selected), [habits, selected]);
+  const items =
+    scope === "all"
+      ? everything
+      : everything.filter(({ day }) => day.status !== "off" && day.status !== "optional");
 
   // The future is not a thing you can have done yet, so its cards are shown
   // but not tickable — the same rule the month calendar has always had.
   const locked = selected > today;
-  const done = items.filter((item) => item.day.status === "done").length;
-  const asked = items.filter((item) => item.day.status !== "off").length;
+  const asked = everything.filter(
+    ({ day }) => day.status !== "off" && day.status !== "optional",
+  );
+  const done = asked.filter((item) => item.day.status === "done").length;
 
   // Editing lives on the habit's own screen, behind the pencil; this board
   // only ever creates.
@@ -106,16 +114,36 @@ export function HabitsBoard({ today }: { today: string }) {
             />
 
             <section aria-labelledby="day-heading" className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <h2 id="day-heading" className="text-[13.5px] font-medium text-ink">
                   {selected === today ? "Today" : formatLongDate(selected)}
                 </h2>
-                {asked > 0 && (
-                  <span className="text-[12.5px] text-ink-3 tnum">
-                    {done} of {asked} done
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {asked.length > 0 && (
+                    <span className="text-[12.5px] text-ink-3 tnum">
+                      {done} of {asked.length} done
+                    </span>
+                  )}
+                  <Seg
+                    label="Which habits"
+                    value={scope}
+                    onChange={setScope}
+                    options={[
+                      { value: "due", label: "Due" },
+                      { value: "all", label: `All ${habits.length}` },
+                    ]}
+                  />
+                </div>
               </div>
+
+              {items.length === 0 && (
+                <Card>
+                  <Empty>
+                    Nothing due {selected === today ? "today" : "on this day"}.
+                    Tap “All” to see every habit.
+                  </Empty>
+                </Card>
+              )}
 
               {/* Two columns from the narrowest phone up: a card is an icon, a
                   name and a ring, and one per row left most of it empty. */}

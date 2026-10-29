@@ -657,6 +657,69 @@ export function overallStats(habits: Habit[], todayKey: string): OverallStats {
   };
 }
 
+export type MonthStats = {
+  /** YYYY-MM. */
+  month: string;
+  /** Marks landed this month, across every habit, inside its own window. */
+  done: number;
+  /** Marks the plans asked for this month so far, fractional. */
+  expected: number;
+  /** `done / expected`, 0–1. */
+  adherence: number;
+  /** The month still being lived. */
+  current: boolean;
+};
+
+/**
+ * The headline figure, scored one calendar month at a time.
+ *
+ * A lifetime ratio stops moving after a few months: one good week barely
+ * shifts it and one bad one barely dents it. Starting the count fresh on the
+ * 1st makes the ring answer "how is this month going", which is a question you
+ * can still do something about.
+ *
+ * Same rule as everywhere else for today: an open day is not a missed one, so
+ * it only joins the expectation once the habit has been marked on it.
+ */
+export function monthStats(
+  habits: Habit[],
+  anyDayInMonth: string,
+  todayKey: string,
+): MonthStats {
+  const month = monthKey(anyDayInMonth);
+  const monthStart = `${month}-01`;
+  const monthEnd = endOfMonth(monthStart);
+  const current = month === monthKey(todayKey);
+
+  let done = 0;
+  let expected = 0;
+
+  for (const habit of habits) {
+    const plan = habitPlan(habit);
+    const from = plan.startDate > monthStart ? plan.startDate : monthStart;
+    const to = monthEnd < todayKey ? monthEnd : todayKey;
+    if (from > to) continue;
+
+    const marks = new Set(habit.marks);
+    let landed = 0;
+    for (const m of marks) if (m >= from && m <= to) landed += 1;
+    done += landed;
+
+    // Closed days only: up to the month's end, or up to yesterday.
+    const closed = to === todayKey ? daysBetween(from, todayKey) : daysBetween(from, to) + 1;
+    expected += Math.max(0, closed) * plan.perDay;
+    if (to === todayKey && marks.has(todayKey)) expected += plan.perDay;
+  }
+
+  return {
+    month,
+    done,
+    expected,
+    adherence: expected <= 0 ? (done > 0 ? 1 : 0) : Math.min(1, done / expected),
+    current,
+  };
+}
+
 /**
  * The whole-board streak. A day counts when at least half the habits running
  * that day were marked — the "did I show up" line. Today gets the same grace a

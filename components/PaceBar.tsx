@@ -28,23 +28,24 @@ export function PaceBar({
 
   return (
     <div
-      className="relative h-[20px] w-full"
+      className="relative h-[16px] w-full"
       role="meter"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(actual * 100)}
       aria-valuetext={label}
     >
-      <div className="absolute inset-x-0 top-[3px] h-[14px] rounded-full bg-surface-3">
+      {/* A thin flat line: no rim, just the fill on its track. */}
+      <div className="absolute inset-x-0 top-[3px] h-[10px] overflow-hidden rounded-full bg-surface-3">
         {/* Width rather than scaleX: a scaled bar squashes its own round cap
             into an ellipse, which is invisible at 8px and obvious at 14. */}
         <div
-          className="bar-fill h-full rounded-full border border-accent-700 bg-accent-500"
+          className="bar-fill h-full rounded-full bg-accent-500"
           style={{
             width: `${actual * 100}%`,
             // A cap's worth of bar, so a goal just started still reads as
             // started instead of as an empty track.
-            minWidth: actual > 0 ? 14 : 0,
+            minWidth: actual > 0 ? 10 : 0,
           }}
         />
       </div>
@@ -52,7 +53,7 @@ export function PaceBar({
         <span
           aria-hidden="true"
           title="Where the plan expects you today"
-          className="absolute top-0 h-[20px] w-[2.5px] -translate-x-1/2 rounded-full bg-ink-2"
+          className="absolute top-0 h-[16px] w-[2px] -translate-x-1/2 rounded-full bg-ink-2"
           style={{ left: `${plan * 100}%` }}
         />
       )}

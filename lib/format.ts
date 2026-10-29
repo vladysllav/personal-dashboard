@@ -1,4 +1,4 @@
-import { ON_PACE_TOLERANCE } from "./constants";
+import { paceTolerance } from "./constants";
 import { STEP_NOUN } from "./dates";
 import type { StepUnit } from "./types";
 
@@ -54,7 +54,7 @@ export function pluralSteps(count: number, unit: StepUnit): string {
 
 /** "3 days ahead" / "2 days behind" / "on pace". Never colour-dependent. */
 export function formatPace(stepsDelta: number, unit: StepUnit): string {
-  if (Math.abs(stepsDelta) <= ON_PACE_TOLERANCE) return "on pace";
+  if (Math.abs(stepsDelta) <= paceTolerance(unit)) return "on pace";
   return `${pluralSteps(stepsDelta, unit)} ${stepsDelta > 0 ? "ahead" : "behind"}`;
 }
 
