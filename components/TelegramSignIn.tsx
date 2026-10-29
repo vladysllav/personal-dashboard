@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LoadingScreen } from "./LoadingScreen";
-import { telegramInitData } from "./Telegram";
+import { whenTelegram } from "./Telegram";
 
 type Phase = "checking" | "signing-in" | "failed";
 
@@ -24,14 +24,17 @@ export function TelegramSignIn() {
   const [phase, setPhase] = useState<Phase>("checking");
 
   useEffect(() => {
-    const initData = telegramInitData();
-    if (!initData) return;
-
-    setPhase("signing-in");
     let cancelled = false;
 
-    signIn("telegram", { initData, redirect: false })
+    whenTelegram()
+      .then((app) => {
+        const initData = app?.initData ?? "";
+        if (!initData || cancelled) return null;
+        setPhase("signing-in");
+        return signIn("telegram", { initData, redirect: false });
+      })
       .then((result) => {
+        if (result === null) return;
         if (cancelled) return;
         if (result?.ok && !result.error) {
           // replace, not push: the sign-in screen is not somewhere the back

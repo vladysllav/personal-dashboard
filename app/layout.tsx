@@ -33,18 +33,20 @@ export const viewport: Viewport = {
 };
 
 /**
- * Marks the document before anything paints, so `tg:` utilities are already
- * correct in the first frame. `initData` is only non-empty when Telegram
- * itself opened the page, which makes it the one honest test — a user agent
- * string is not, and neither is a query parameter anybody can append.
+ * Telegram, without holding up the first paint.
  *
- * It also calls `ready()` right here rather than after hydration. Telegram
- * keeps its own placeholder over the page until that call, so leaving it for
- * React meant the loading screen below was streamed, painted, and never seen:
- * what showed instead was Telegram's spinner, for as long as the whole app
- * took to load.
+ * The SDK used to be a parser-blocking <script> in <head>, which meant nothing
+ * at all painted until telegram.org answered — in a browser too, where it does
+ * nothing. Now it loads async, and the page paints at once.
+ *
+ * `data-tg` is still stamped before anything paints: Telegram puts its launch
+ * payload in the URL fragment, so `tgWebAppData` there says where we are in
+ * time for the first frame. Once the SDK lands, `initData` — the one honest
+ * test — confirms it or takes the attribute back off, and `ready()` drops
+ * Telegram's own placeholder. `window.__tg` resolves then, for the components
+ * that need the SDK.
  */
-const BOOT_TELEGRAM = `try{var a=window.Telegram&&window.Telegram.WebApp;if(a&&a.initData){document.documentElement.setAttribute("data-tg","1");try{a.setHeaderColor("#f7f7f5");a.setBackgroundColor("#f7f7f5")}catch(e){}a.ready();a.expand()}}catch(e){}`;
+const BOOT_TELEGRAM = `(function(){var d=document.documentElement;try{if((location.hash||"").indexOf("tgWebAppData")>-1)d.setAttribute("data-tg","1")}catch(e){}window.__tg=new Promise(function(done){var s=document.createElement("script");s.src="https://telegram.org/js/telegram-web-app.js";s.async=true;s.onload=function(){try{var a=window.Telegram&&window.Telegram.WebApp;if(a&&a.initData){d.setAttribute("data-tg","1");try{a.setHeaderColor("#f7f7f5");a.setBackgroundColor("#f7f7f5")}catch(e){}a.ready();a.expand()}else{d.removeAttribute("data-tg")}}catch(e){}done()};s.onerror=function(){d.removeAttribute("data-tg");done()};document.head.appendChild(s)})})();`;
 
 /*
  * Deliberately thin. The store and the app chrome belong to signed-in routes
@@ -66,10 +68,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Plain, parser-blocking tags rather than next/script: those run from
-            the Next runtime, after the bundle has loaded, which is exactly the
-            wait the early ready() exists to cut. */}
-        <script src="https://telegram.org/js/telegram-web-app.js" />
+        {/* Inline rather than next/script, which runs only after the bundle
+            has loaded. It starts the SDK download without blocking paint. */}
         <script dangerouslySetInnerHTML={{ __html: BOOT_TELEGRAM }} />
       </head>
       <body className="min-h-full font-sans">

@@ -1,28 +1,26 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/auth";
 import { AppShell } from "@/components/AppShell";
 import { SignOutButton } from "@/components/SignOutButton";
-import { loadState } from "@/lib/server/state";
 import { StoreProvider } from "@/lib/store";
 
 /**
- * Everything behind the sign-in wall. The dashboard is fetched here, on the
- * server, so the first paint already has real data — there is no empty flash
- * and no client-side loading state to design around.
+ * Starts the dashboard request in the page's first bytes, ahead of React and
+ * the bundle. The store picks the promise up once it mounts.
  */
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+const PREFETCH = `window.__dashboard=fetch("/api/state",{cache:"no-store"});`;
 
-  const initialState = await loadState(session.user.id);
-
+/**
+ * Everything behind the sign-in wall. Middleware has already checked the
+ * session, so this renders at once without touching the database: the shell
+ * paints with the loading screen over it, and the data arrives on its own
+ * request while the rest of the app loads.
+ */
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider initialState={initialState}>
-      <AppShell account={<SignOutButton />}>{children}</AppShell>
-    </StoreProvider>
+    <>
+      <script dangerouslySetInnerHTML={{ __html: PREFETCH }} />
+      <StoreProvider>
+        <AppShell account={<SignOutButton />}>{children}</AppShell>
+      </StoreProvider>
+    </>
   );
 }

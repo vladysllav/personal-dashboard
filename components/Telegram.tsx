@@ -36,6 +36,16 @@ export function telegramInitData(): string {
   return webApp()?.initData ?? "";
 }
 
+/**
+ * Resolves once the SDK has loaded (or failed to), so a caller sees
+ * `window.Telegram` as it will be rather than as it is mid-download.
+ */
+export function whenTelegram(): Promise<TelegramWebApp | undefined> {
+  if (typeof window === "undefined") return Promise.resolve(undefined);
+  const boot = (window as Window & { __tg?: Promise<void> }).__tg;
+  return (boot ?? Promise.resolve()).then(() => webApp());
+}
+
 export function TelegramProvider({ children }: { children: ReactNode }) {
   // Starts false so the server render and the first client render agree; the
   // layout script has already set data-tg on <html>, so the bottom bar is in
@@ -45,24 +55,29 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const app = webApp();
-    if (!app || !app.initData) return;
-    setInTelegram(true);
+    let cancelled = false;
+    whenTelegram().then((app) => {
+      if (cancelled || !app || !app.initData) return;
+      setInTelegram(true);
 
-    app.ready();
-    app.expand();
-    // Without this a downward flick inside a scrolled list drags the whole
-    // Mini App closed, which is a brutal way to lose a half-typed entry.
-    app.disableVerticalSwipes?.();
+      app.ready();
+      app.expand();
+      // Without this a downward flick inside a scrolled list drags the whole
+      // Mini App closed, which is a brutal way to lose a half-typed entry.
+      app.disableVerticalSwipes?.();
 
-    // The product has one palette and it is light. Painting Telegram's own
-    // bars to match is better than letting a dark client frame a light app.
-    try {
-      app.setHeaderColor("#f7f7f5");
-      app.setBackgroundColor("#f7f7f5");
-    } catch {
-      // Older clients reject colours they do not know. Not worth failing over.
-    }
+      // The product has one palette and it is light. Painting Telegram's own
+      // bars to match is better than letting a dark client frame a light app.
+      try {
+        app.setHeaderColor("#f7f7f5");
+        app.setBackgroundColor("#f7f7f5");
+      } catch {
+        // Older clients reject colours they do not know. Not worth failing over.
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /**
@@ -76,7 +91,7 @@ export function TelegramProvider({ children }: { children: ReactNode }) {
 
     // Any screen reached from another one rather than from the tab bar: a
     // goal, a habit, and the habits statistics behind the chart icon.
-    const isDetail = /^\/(goals|habits)\/[^/]+$/.test(pathname);
+    const isDetail = /^\/(goals|habits|challenges)\/[^/]+$/.test(pathname);
     const back = () => router.back();
 
     if (isDetail) {

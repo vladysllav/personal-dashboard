@@ -20,11 +20,13 @@ import { Button, Card } from "./ui";
  * today is a row in the list, so the day is one object instead of three.
  */
 export function Dashboard({
-  account,
+  account: override,
 }: {
+  /** Only the preview harness passes one; the app reads the signed-in account. */
   account?: { name?: string | null; image?: string | null; email?: string | null };
 }) {
-  const { state, ready, loadSample } = useStore();
+  const { state, ready, loadSample, account: signedIn } = useStore();
+  const account = override ?? signedIn ?? undefined;
   const today = useToday();
 
   if (!ready || !today) return <DashboardSkeleton />;

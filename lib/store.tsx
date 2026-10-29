@@ -4,12 +4,14 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import { addDays, startOfWeek, todayKey, weekdayIndex } from "./dates";
 import { applyAction } from "./server/actions";
 import type { Intent, SyncAction } from "./sync";
@@ -30,6 +32,49 @@ export type { GoalPatch } from "./sync";
 const DEFAULT_PREFS: Preferences = { goalView: "bar", pinnedGoalIds: [] };
 
 type Action = SyncAction | { type: "hydrate"; state: DashboardState };
+
+export type Account = { name: string | null; image: string | null; email: string | null };
+
+type Loaded = { state: DashboardState; account: Account | null };
+
+declare global {
+  interface Window {
+    /** Started by the inline script in `(app)/layout.tsx`, before the bundle loads. */
+    __dashboard?: Promise<Response>;
+  }
+}
+
+/**
+ * The dashboard, fetched once per page load.
+ *
+ * The request is usually already in flight: the layout's inline script starts
+ * it in the page's first bytes, so the data and the JavaScript download side
+ * by side. Taken once, so a later mount (a client-side remount after sign-out)
+ * asks afresh rather than reusing a stale answer.
+ */
+async function fetchDashboard(): Promise<Loaded> {
+  const early = typeof window !== "undefined" ? window.__dashboard : undefined;
+  if (typeof window !== "undefined") window.__dashboard = undefined;
+  const res = await (early ?? fetch("/api/state", { cache: "no-store" }));
+
+  // Signed out: middleware redirects the request to the sign-in page, which
+  // comes back as HTML rather than as the JSON asked for.
+  const json = res.headers.get("content-type")?.includes("application/json");
+  if (res.status === 401 || res.redirected || !json) {
+    window.location.replace("/login");
+    return new Promise(() => {});
+  }
+  if (!res.ok) throw new Error(`Load failed: ${res.status}`);
+  return (await res.json()) as Loaded;
+}
+
+const EMPTY: DashboardState = {
+  goals: [],
+  habits: [],
+  prefs: { goalView: "bar", pinnedGoalIds: [] },
+  nutrition: { plan: null, days: [], weights: [] },
+  challenges: [],
+};
 
 function reducer(state: DashboardState, action: Action): DashboardState {
   switch (action.type) {
@@ -351,8 +396,10 @@ export function newId(): string {
 type StoreValue = {
   state: DashboardState;
   dispatch: (intent: Intent) => void;
-  /** Kept for call sites; the server renders with real data, so it is never false. */
+  /** False until the dashboard has loaded; screens render nothing before then. */
   ready: boolean;
+  /** The signed-in account, for the profile row. Null in the preview harness. */
+  account: Account | null;
   /** Set when a write fails to reach the server. Surfaced inline, not swallowed. */
   syncError: string | null;
   loadSample: () => void;
@@ -360,19 +407,45 @@ type StoreValue = {
 
 const StoreContext = createContext<StoreValue | null>(null);
 
+/**
+ * Holds the dashboard and keeps the server in step with it.
+ *
+ * Without `initialState` it loads the data itself, and until then keeps the
+ * loading screen over the app: the shell is already painted and hydrated
+ * underneath, so when the data lands the page is simply there.
+ */
 export function StoreProvider({
   initialState,
   children,
 }: {
-  initialState: DashboardState;
+  initialState?: DashboardState;
   children: ReactNode;
 }) {
-  const [state, rawDispatch] = useReducer(reducer, initialState);
+  const [state, rawDispatch] = useReducer(reducer, initialState ?? EMPTY);
+  const [loaded, setLoaded] = useState(Boolean(initialState));
+  const [account, setAccount] = useState<Account | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // A synchronous mirror of `state`. Sealing needs the current data, and two
   // dispatches in one tick would both read a stale `state` from the closure.
-  const stateRef = useRef(initialState);
+  const stateRef = useRef(initialState ?? EMPTY);
+
+  const load = useCallback(() => {
+    setLoadError(false);
+    fetchDashboard()
+      .then(({ state: next, account: who }) => {
+        stateRef.current = next;
+        rawDispatch({ type: "hydrate", state: next });
+        setAccount(who);
+        setLoaded(true);
+      })
+      .catch(() => setLoadError(true));
+  }, []);
+
+  useEffect(() => {
+    if (!initialState) load();
+  }, [initialState, load]);
 
   // Writes go out one at a time. Order matters — creating a goal must land
   // before an entry logged against it — and at personal scale a promise chain
@@ -401,11 +474,36 @@ export function StoreProvider({
   }, [dispatch]);
 
   const value = useMemo(
-    () => ({ state, dispatch, ready: true, syncError, loadSample }),
-    [state, dispatch, syncError, loadSample],
+    () => ({ state, dispatch, ready: loaded, account, syncError, loadSample }),
+    [state, dispatch, loaded, account, syncError, loadSample],
   );
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  return (
+    <StoreContext.Provider value={value}>
+      {/* The shell and the screens mount underneath straight away — each
+          screen waits on `ready` — so the moment the data lands, the overlay
+          lifts off a page that is already built. */}
+      {children}
+      {!loaded &&
+        (loadError ? (
+          <div
+            role="alert"
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-canvas px-6 text-center"
+          >
+            <p className="text-[13.5px] font-medium text-ink">Couldn&rsquo;t load your dashboard.</p>
+            <button
+              type="button"
+              onClick={load}
+              className="rounded-[var(--radius-input)] border border-line bg-surface px-3.5 py-2 text-[13.5px] font-medium text-ink hover:border-line-strong"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+          <LoadingScreen />
+        ))}
+    </StoreContext.Provider>
+  );
 }
 
 export function useStore(): StoreValue {
