@@ -9,7 +9,10 @@ import {
   habitMarks,
   habits,
   milestones,
+  nutritionDays,
+  nutritionPlans,
   preferences,
+  weightEntries,
 } from "@/lib/db/schema";
 import { syncActionSchema } from "./validate";
 import {
@@ -210,6 +213,41 @@ export async function applyAction(input: unknown): Promise<void> {
           target: preferences.userId,
           set: { pinnedGoalIds: value },
         });
+      return;
+    }
+
+    case "setNutritionPlan": {
+      await db
+        .insert(nutritionPlans)
+        .values({ userId, ...action.plan })
+        .onConflictDoUpdate({ target: nutritionPlans.userId, set: action.plan });
+      return;
+    }
+
+    case "setNutritionDay": {
+      const { date, ...totals } = action.day;
+      await db
+        .insert(nutritionDays)
+        .values({ userId, dateKey: date, ...totals })
+        .onConflictDoUpdate({
+          target: [nutritionDays.userId, nutritionDays.dateKey],
+          set: totals,
+        });
+      return;
+    }
+
+    case "addWeight": {
+      await db
+        .insert(weightEntries)
+        .values({
+          id: action.entry.id,
+          userId,
+          dateKey: action.entry.date,
+          at: action.entry.at,
+          value: action.entry.value,
+        })
+        // A retried weigh-in must not land twice.
+        .onConflictDoNothing();
       return;
     }
 

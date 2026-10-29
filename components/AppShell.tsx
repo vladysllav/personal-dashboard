@@ -42,6 +42,7 @@ const NAV: Array<{
       { href: "/", label: "Today", icon: "today" },
       { href: "/goals", label: "Goals", icon: "target" },
       { href: "/habits", label: "Habits", icon: "grid" },
+      { href: "/nutrition", label: "Nutrition", icon: "food" },
     ],
   },
 ];

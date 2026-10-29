@@ -208,3 +208,50 @@ export const preferences = pgTable("preferences", {
   /** Pinned goal ids, comma separated and in display order. At most two. */
   pinnedGoalIds: text("pinned_goal_ids"),
 });
+
+/* ---------- Nutrition ---------- */
+
+/** The daily calorie and macro plan. One row per user. */
+export const nutritionPlans = pgTable("nutrition_plans", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  calories: doublePrecision("calories").notNull(),
+  protein: doublePrecision("protein").notNull(),
+  fat: doublePrecision("fat").notNull(),
+  carbs: doublePrecision("carbs").notNull(),
+});
+
+/** A day's eating as running totals, one row per user and local date. */
+export const nutritionDays = pgTable(
+  "nutrition_days",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Local date, YYYY-MM-DD. */
+    dateKey: text("date_key").notNull(),
+    calories: doublePrecision("calories").notNull(),
+    protein: doublePrecision("protein").notNull(),
+    fat: doublePrecision("fat").notNull(),
+    carbs: doublePrecision("carbs").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.dateKey] })],
+);
+
+/** Every weigh-in, kept as logged. */
+export const weightEntries = pgTable(
+  "weight_entries",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Local date, YYYY-MM-DD. */
+    dateKey: text("date_key").notNull(),
+    /** ISO timestamp it was recorded. */
+    at: text("at").notNull(),
+    value: doublePrecision("value").notNull(),
+  },
+  (t) => [index("weight_entries_user_id_idx").on(t.userId)],
+);

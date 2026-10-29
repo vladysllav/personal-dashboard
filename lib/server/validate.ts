@@ -104,6 +104,10 @@ const stateSchema = z.object({
   prefs: z.object({ goalView, pinnedGoalIds: z.array(id).max(2) }),
 });
 
+/** Daily figures: never negative, and bounded well above any real day. */
+const amount = z.number().finite().min(0).max(100_000);
+const macros = z.object({ calories: amount, protein: amount, fat: amount, carbs: amount });
+
 export const syncActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("addGoal"), goal: goalSchema }),
   z.object({ type: z.literal("editGoal"), goalId: id, patch: goalPatchSchema }),
@@ -143,5 +147,19 @@ export const syncActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("removeHabit"), habitId: id }),
   z.object({ type: z.literal("setGoalView"), view: goalView }),
   z.object({ type: z.literal("setPinnedGoals"), goalIds: z.array(id).max(2) }),
+  z.object({ type: z.literal("setNutritionPlan"), plan: macros }),
+  z.object({
+    type: z.literal("setNutritionDay"),
+    day: macros.extend({ date: dateKey }),
+  }),
+  z.object({
+    type: z.literal("addWeight"),
+    entry: z.object({
+      id,
+      date: dateKey,
+      at: timestamp,
+      value: z.number().finite().min(1).max(1000),
+    }),
+  }),
   z.object({ type: z.literal("replace"), state: stateSchema }),
 ]);

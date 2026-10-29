@@ -136,7 +136,6 @@ export function HabitOverview({
             // quietly put it back.
             status="on-pace"
             size={140}
-            caption={monthly.current ? "kept this month" : "kept that month"}
           />
           <dl className="flex min-w-[112px] flex-1 flex-col gap-3">
             <Metric

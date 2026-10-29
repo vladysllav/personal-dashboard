@@ -6,7 +6,10 @@ import {
   habitMarks,
   habits,
   milestones,
+  nutritionDays,
+  nutritionPlans,
   preferences,
+  weightEntries,
 } from "@/lib/db/schema";
 import { normalizeFrequency } from "@/lib/habits";
 import { DEFAULT_COLOR, DEFAULT_EMOJI, isHabitColor } from "@/lib/palette";
@@ -18,6 +21,7 @@ export const EMPTY_STATE: DashboardState = {
   goals: [],
   habits: [],
   prefs: { ...DEFAULT_PREFS },
+  nutrition: { plan: null, days: [], weights: [] },
 };
 
 /**
@@ -37,7 +41,7 @@ function parseIdList(raw: string | null | undefined): string[] {
  * row counts here are personal-scale, and this keeps ordering explicit.
  */
 export async function loadState(userId: string): Promise<DashboardState> {
-  const [goalRows, habitRows, prefRow] = await Promise.all([
+  const [goalRows, habitRows, prefRow, planRow, dayRows, weightRows] = await Promise.all([
     db.select().from(goals).where(eq(goals.userId, userId)).orderBy(asc(goals.seq)),
     db.select().from(habits).where(eq(habits.userId, userId)).orderBy(asc(habits.seq)),
     db
@@ -45,6 +49,17 @@ export async function loadState(userId: string): Promise<DashboardState> {
       .from(preferences)
       .where(eq(preferences.userId, userId))
       .limit(1),
+    db.select().from(nutritionPlans).where(eq(nutritionPlans.userId, userId)).limit(1),
+    db
+      .select()
+      .from(nutritionDays)
+      .where(eq(nutritionDays.userId, userId))
+      .orderBy(asc(nutritionDays.dateKey)),
+    db
+      .select()
+      .from(weightEntries)
+      .where(eq(weightEntries.userId, userId))
+      .orderBy(asc(weightEntries.dateKey), asc(weightEntries.at)),
   ]);
 
   const goalIds = goalRows.map((g) => g.id);
@@ -131,6 +146,29 @@ export async function loadState(userId: string): Promise<DashboardState> {
       pinnedGoalIds: parseIdList(prefRow[0]?.pinnedGoalIds)
         .filter((id) => builtGoals.some((goal) => goal.id === id))
         .slice(0, 2),
+    },
+    nutrition: {
+      plan: planRow[0]
+        ? {
+            calories: planRow[0].calories,
+            protein: planRow[0].protein,
+            fat: planRow[0].fat,
+            carbs: planRow[0].carbs,
+          }
+        : null,
+      days: dayRows.map((row) => ({
+        date: row.dateKey,
+        calories: row.calories,
+        protein: row.protein,
+        fat: row.fat,
+        carbs: row.carbs,
+      })),
+      weights: weightRows.map((row) => ({
+        id: row.id,
+        date: row.dateKey,
+        at: row.at,
+        value: row.value,
+      })),
     },
   };
 }

@@ -4,6 +4,9 @@ import type {
   GoalEntry,
   GoalView,
   Habit,
+  Macros,
+  NutritionDay,
+  WeightEntry,
 } from "./types";
 
 /**
@@ -59,6 +62,10 @@ export type Intent =
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }
   | { type: "setPinnedGoals"; goalIds: string[] }
+  | { type: "setNutritionPlan"; plan: Macros }
+  /** Adds to the day's totals, or with `replace` overwrites them. */
+  | { type: "logNutrition"; date: string; macros: Macros; replace?: boolean }
+  | { type: "logWeight"; date: string; value: number }
   | { type: "replace"; state: DashboardState };
 
 /**
@@ -91,4 +98,8 @@ export type SyncAction =
   | { type: "removeHabit"; habitId: string }
   | { type: "setGoalView"; view: GoalView }
   | { type: "setPinnedGoals"; goalIds: string[] }
+  | { type: "setNutritionPlan"; plan: Macros }
+  /** The day's totals as they should now stand — absolute, so a retry is harmless. */
+  | { type: "setNutritionDay"; day: NutritionDay }
+  | { type: "addWeight"; entry: WeightEntry }
   | { type: "replace"; state: DashboardState };

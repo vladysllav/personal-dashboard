@@ -77,7 +77,7 @@ rounded:
   badge: "8px"
   input: "10px"
   control: "12px"
-  card: "18px"
+  card: "12px"
   pill: "999px"
 spacing:
   xs: "4px"
@@ -178,9 +178,9 @@ negotiable:
 
 - **Yellow is only ever a fill.** It cannot be type, and it cannot be a line.
   Accent text and accent strokes are `accent-700` `#8a6b00` (5.02:1 on white).
-- **A yellow fill is always drawn with an edge.** `accent-700` at 1px on a
-  button or a bar, and as a slightly wider arc beneath a ring. Without it the
-  bar and its groove are the same shape.
+- **Bars and rings are flat.** By the owner's call, progress bars and rings
+  are drawn with no rim: a solid arc or fill on a pale `surface-3` track.
+  Buttons keep their `accent-700` edge.
 
 ### On a yellow fill, text is black
 

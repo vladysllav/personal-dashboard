@@ -1,11 +1,10 @@
 import { barFraction } from "@/lib/goals";
 import type { GoalStatus } from "@/lib/types";
 
-// viewBox units. A 12-wide stroke on r=40 gives the thick ring of the
-// reference: heavy enough to read as a band rather than as a hairline, and
-// still clear of the 100-unit box at its outer edge (40 + 6 = 46).
-const R = 40;
-const STROKE = 12;
+// viewBox units. A 10-wide stroke on r=42 gives a calm band with room to
+// spare inside the 100-unit box (42 + 5 = 47).
+const R = 42;
+const STROKE = 10;
 const C = 2 * Math.PI * R;
 
 /**
@@ -76,23 +75,7 @@ export function Donut({
           strokeWidth={STROKE}
           stroke="var(--color-surface-3)"
         />
-        {/* The arc is drawn twice: a slightly wider pass in the edge colour,
-            then the yellow inside it. Yellow is 1.28:1 against its own track
-            and never reaches 3:1 against any grey, so on its own the arc has
-            no visible boundary — the rim is what makes it a shape. */}
-        <circle
-          className="arc-grow"
-          cx="50"
-          cy="50"
-          r={R}
-          fill="none"
-          strokeWidth={STROKE + 2}
-          strokeLinecap="round"
-          stroke="var(--color-accent-700)"
-          opacity={0.9}
-          strokeDasharray={C}
-          strokeDashoffset={C - actual * C}
-        />
+        {/* Flat arc on a pale track: no rim, square ends. */}
         <circle
           className="arc-grow"
           cx="50"
@@ -100,7 +83,6 @@ export function Donut({
           r={R}
           fill="none"
           strokeWidth={STROKE}
-          strokeLinecap="round"
           stroke="var(--color-accent-500)"
           strokeDasharray={C}
           strokeDashoffset={C - actual * C}

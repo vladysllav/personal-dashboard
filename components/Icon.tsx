@@ -27,7 +27,8 @@ export type IconName =
   | "trophy"
   | "pin"
   | "signOut"
-  | "spinner";
+  | "spinner"
+  | "food";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   today: (
@@ -101,6 +102,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <path d="M14.4 7.5V5.7a1.5 1.5 0 0 0-1.5-1.5H6.3a1.5 1.5 0 0 0-1.5 1.5v12.6a1.5 1.5 0 0 0 1.5 1.5h6.6a1.5 1.5 0 0 0 1.5-1.5v-1.8" />
       <path d="M10.5 12h9.3M17.4 9 19.8 12l-2.4 3" />
+    </>
+  ),
+  food: (
+    <>
+      {/* A fork on the left, a spoon on the right. */}
+      <path d="M5.4 3v5.1a2.1 2.1 0 0 0 4.2 0V3M7.5 3v18" />
+      <ellipse cx="16.5" cy="7.2" rx="2.7" ry="4.2" />
+      <path d="M16.5 11.4V21" />
     </>
   ),
   spinner: (

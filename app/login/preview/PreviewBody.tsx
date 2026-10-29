@@ -9,6 +9,8 @@ import { GoalDetail } from "@/components/GoalDetail";
 import { HabitDetail } from "@/components/HabitDetail";
 import { HabitStats } from "@/components/HabitStats";
 import { LoadingScreen } from "@/components/LoadingScreen";
+import { NutritionPage } from "@/components/NutritionPage";
+import { addDays, todayKey } from "@/lib/dates";
 import { StoreProvider, buildSample } from "@/lib/store";
 
 function Body() {
@@ -20,6 +22,26 @@ function Body() {
   // the rings and the profile row are reviewable without a signed-in session.
   const pins = Number(params.get("pins") ?? 2);
   state.prefs.pinnedGoalIds = state.goals.slice(0, pins).map((g) => g.id);
+  if (view === "nutrition") {
+    // A plan, two weeks of eating and ten weeks of weigh-ins.
+    const today = todayKey();
+    state.nutrition = {
+      plan: { calories: 2200, protein: 165, fat: 70, carbs: 240 },
+      days: Array.from({ length: 14 }, (_, i) => ({
+        date: addDays(today, -i),
+        calories: [1820, 2520, 2100, 2350, 1980, 2240, 2050][i % 7]!,
+        protein: [120, 153, 140, 160, 130, 150, 145][i % 7]!,
+        fat: [60, 90, 66, 75, 58, 70, 64][i % 7]!,
+        carbs: [190, 255, 220, 230, 210, 235, 200][i % 7]!,
+      })).filter((_, i) => i !== 4),
+      weights: Array.from({ length: 30 }, (_, i) => ({
+        id: `w${i}`,
+        date: addDays(today, -i * 2.4 | 0),
+        at: new Date(Date.now() - i * 86_400_000).toISOString(),
+        value: Math.round((82 + i * 0.12 + ((i * 7) % 5) * 0.1) * 10) / 10,
+      })),
+    };
+  }
   return (
     <StoreProvider initialState={state}>
       <AppShell account={null}>
@@ -31,6 +53,8 @@ function Body() {
           <HabitStats />
         ) : view === "habit" ? (
           <HabitDetail habitId={state.habits[Number(params.get("habit") ?? 0)]!.id} />
+        ) : view === "nutrition" ? (
+          <NutritionPage />
         ) : view === "loading" ? (
           <LoadingScreen />
         ) : view === "detail" ? (

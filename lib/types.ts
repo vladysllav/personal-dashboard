@@ -115,10 +115,42 @@ export type Preferences = {
   pinnedGoalIds: string[];
 };
 
+/** Calories and macros — the daily plan and a day's totals share one shape. */
+export type Macros = {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+};
+
+/** One day's eating, stored as running totals. */
+export type NutritionDay = Macros & {
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+};
+
+/** A weigh-in. Every one is kept; charts read the last of each week or month. */
+export type WeightEntry = {
+  id: string;
+  /** Local date, YYYY-MM-DD. */
+  date: string;
+  /** ISO timestamp it was recorded — orders two weigh-ins on the same day. */
+  at: string;
+  value: number;
+};
+
+export type Nutrition = {
+  /** Null until a plan has been set. */
+  plan: Macros | null;
+  days: NutritionDay[];
+  weights: WeightEntry[];
+};
+
 export type DashboardState = {
   goals: Goal[];
   habits: Habit[];
   prefs: Preferences;
+  nutrition: Nutrition;
 };
 
 export type GoalStatus =

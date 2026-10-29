@@ -34,8 +34,35 @@ type Action = SyncAction | { type: "hydrate"; state: DashboardState };
 function reducer(state: DashboardState, action: Action): DashboardState {
   switch (action.type) {
     case "hydrate":
-    case "replace":
       return action.state;
+
+    case "replace":
+      // Sample data covers goals and habits; what you have eaten stays.
+      return { ...action.state, nutrition: state.nutrition };
+
+    case "setNutritionPlan":
+      return { ...state, nutrition: { ...state.nutrition, plan: action.plan } };
+
+    case "setNutritionDay":
+      return {
+        ...state,
+        nutrition: {
+          ...state.nutrition,
+          days: [
+            ...state.nutrition.days.filter((d) => d.date !== action.day.date),
+            action.day,
+          ].sort((a, b) => (a.date < b.date ? -1 : 1)),
+        },
+      };
+
+    case "addWeight":
+      return {
+        ...state,
+        nutrition: {
+          ...state.nutrition,
+          weights: [...state.nutrition.weights, action.entry],
+        },
+      };
 
     case "addGoal":
       return { ...state, goals: [...state.goals, action.goal] };
@@ -220,6 +247,33 @@ function seal(intent: Intent, state: DashboardState): SyncAction | null {
 
     case "addHabit":
       return { type: "addHabits", habits: [intent.habit] };
+
+    case "logNutrition": {
+      const prev = state.nutrition.days.find((d) => d.date === intent.date);
+      const base = intent.replace || !prev ? { calories: 0, protein: 0, fat: 0, carbs: 0 } : prev;
+      const clamp = (n: number) => Math.max(0, Math.round(n * 10) / 10);
+      return {
+        type: "setNutritionDay",
+        day: {
+          date: intent.date,
+          calories: clamp(base.calories + intent.macros.calories),
+          protein: clamp(base.protein + intent.macros.protein),
+          fat: clamp(base.fat + intent.macros.fat),
+          carbs: clamp(base.carbs + intent.macros.carbs),
+        },
+      };
+    }
+
+    case "logWeight":
+      return {
+        type: "addWeight",
+        entry: {
+          id: newId(),
+          date: intent.date,
+          at: new Date().toISOString(),
+          value: intent.value,
+        },
+      };
 
     default:
       return intent;
@@ -458,5 +512,10 @@ export function buildSample(): DashboardState {
     ),
   ];
 
-  return { goals, habits: buildSampleHabits(today), prefs: DEFAULT_PREFS };
+  return {
+    goals,
+    habits: buildSampleHabits(today),
+    prefs: DEFAULT_PREFS,
+    nutrition: { plan: null, days: [], weights: [] },
+  };
 }
