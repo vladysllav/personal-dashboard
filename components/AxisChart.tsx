@@ -41,10 +41,13 @@ export function AxisChart({
   bars,
   label,
   height = 190,
+  kind = "bar",
 }: {
   bars: AxisBar[];
   label: string;
   height?: number;
+  /** Bars, or a line through the readings — broken where a reading is missing. */
+  kind?: "bar" | "line";
 }) {
   const [ref, width] = useMeasuredWidth();
   const pad = { top: 10, right: 4, bottom: 22, left: 34 };
@@ -55,6 +58,24 @@ export function AxisChart({
   // Room for roughly a 34px label under each shown tick.
   const every = Math.max(1, Math.ceil(34 / slot));
   const y = (v: number) => pad.top + (1 - v) * plotH;
+  const cxOf = (i: number) => pad.left + slot * i + slot / 2;
+  const clamp = (v: number) => Math.max(0, Math.min(1, v));
+
+  // Runs of consecutive readings; a day with nothing to read breaks the line
+  // rather than dragging it down to zero.
+  const runs: string[] = [];
+  if (kind === "line") {
+    let run: string[] = [];
+    bars.forEach((bar, i) => {
+      if (bar.value === null) {
+        if (run.length) runs.push(run.join(" "));
+        run = [];
+      } else {
+        run.push(`${cxOf(i)},${y(clamp(bar.value))}`);
+      }
+    });
+    if (run.length) runs.push(run.join(" "));
+  }
 
   return (
     <div ref={ref} className="px-4 pb-4 pt-3 sm:px-5" style={{ minHeight: height + 28 }}>
@@ -82,16 +103,37 @@ export function AxisChart({
               </text>
             </g>
           ))}
+          {runs.map((points) => (
+            <polyline
+              key={points}
+              points={points}
+              fill="none"
+              stroke="var(--color-accent-600)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
           {bars.map((bar, i) => {
-            const cx = pad.left + slot * i + slot / 2;
-            const v = bar.value === null ? 0 : Math.max(0, Math.min(1, bar.value));
+            const cx = cxOf(i);
+            const v = bar.value === null ? 0 : clamp(bar.value);
             const h = v * plotH;
             return (
               <g key={bar.key}>
                 <title>{bar.detail}</title>
                 {/* A transparent column so the whole slot answers to hover. */}
                 <rect x={cx - slot / 2} y={pad.top} width={slot} height={plotH} fill="transparent" />
-                {bar.value !== null && h > 0 && (
+                {kind === "line" && bar.value !== null && (
+                  <circle
+                    cx={cx}
+                    cy={y(v)}
+                    r={bar.emphasis ? 4.5 : 3}
+                    fill={bar.emphasis ? "var(--color-ink)" : "var(--color-accent-600)"}
+                    stroke="var(--color-surface)"
+                    strokeWidth={1.5}
+                  />
+                )}
+                {kind === "bar" && bar.value !== null && h > 0 && (
                   <rect
                     x={cx - barW / 2}
                     y={y(v)}

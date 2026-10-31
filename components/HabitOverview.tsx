@@ -59,7 +59,6 @@ export function HabitOverview({
   const lastDay = monthEnd < today ? monthEnd : today;
 
   const monthly = useMemo(() => monthStats(habits, month, today), [habits, month, today]);
-  const [lastStat] = useMemo(() => dayStats(habits, lastDay, lastDay), [habits, lastDay]);
 
   const [dayView, setDayView] = useState<View>("bars");
   const [weekView, setWeekView] = useState<View>("bars");
@@ -77,9 +76,11 @@ export function HabitOverview({
             size={140}
           />
           <dl className="flex min-w-[112px] flex-1 flex-col gap-4">
+            {/* Where the month should be by now, against where it will end:
+                the first moves with every day, the second only with marks. */}
             <Metric
-              label={current ? "Today" : formatShortDate(lastDay)}
-              value={`${lastStat?.done ?? 0}/${lastStat?.due ?? 0}`}
+              label="So far"
+              value={`${monthly.done}/${Math.round(monthly.expected)}`}
             />
             <Metric label="Month" value={`${monthly.done}/${Math.round(monthly.total)}`} />
           </dl>
@@ -151,12 +152,13 @@ function DayAxes({ habits, month, today }: { habits: Habit[]; month: string; tod
   const days = useMemo(() => dayStats(habits, month, endOfMonth(month)), [habits, month]);
   const bars: AxisBar[] = days.map((d) => ({
     key: d.day,
-    value: d.day > today || d.due === 0 ? null : d.pct,
+    // An open today with nothing ticked is not a 0% day yet.
+    value: d.day > today || d.due === 0 || (d.day === today && d.done === 0) ? null : d.pct,
     tick: String(dayOfMonth(d.day)),
     emphasis: d.day === today,
     detail: d.day > today ? `${formatLongDate(d.day)} — ahead` : dayDetail(d.day, d.done, d.due, d.pct),
   }));
-  return <AxisChart bars={bars} label="Share of what was due, each day of the month" />;
+  return <AxisChart kind="line" bars={bars} label="Share of what was due, each day of the month" />;
 }
 
 /* ---------- By week ---------- */
