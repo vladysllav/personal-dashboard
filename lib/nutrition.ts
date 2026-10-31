@@ -1,4 +1,4 @@
-import { addDays, monthKey, startOfWeek } from "./dates";
+import { addDays, endOfMonth, monthKey, startOfWeek } from "./dates";
 import type { Macros, Nutrition, WeightEntry } from "./types";
 
 /**
@@ -45,10 +45,10 @@ export function calorieDays(nutrition: Nutrition, toKey: string, days: number): 
   });
 }
 
-export type WeightPeriod = "week" | "month";
+export type WeightPeriod = "day" | "week" | "month";
 
 export type WeightPoint = {
-  /** Monday of the week, or the 1st of the month. */
+  /** The day itself, the Monday of the week, or the 1st of the month. */
   start: string;
   /** The last weigh-in inside the period. */
   value: number;
@@ -69,7 +69,7 @@ export function weightSeries(
   limit = 12,
 ): WeightPoint[] {
   const keyOf = (date: string) =>
-    period === "week" ? startOfWeek(date) : `${monthKey(date)}-01`;
+    period === "day" ? date : period === "week" ? startOfWeek(date) : `${monthKey(date)}-01`;
 
   // Latest wins: by date, then by the moment it was recorded.
   const sorted = [...weights].sort((a, b) =>
@@ -93,4 +93,12 @@ export function latestWeight(weights: WeightEntry[]): WeightEntry | null {
     if (!best || w.date > best.date || (w.date === best.date && w.at > best.at)) best = w;
   }
   return best;
+}
+
+/** The last weigh-in of every logged day in the month containing `anyDay`, oldest first. */
+export function weightDays(weights: WeightEntry[], anyDay: string, todayKey: string): WeightPoint[] {
+  const from = `${monthKey(anyDay)}-01`;
+  const to = endOfMonth(from);
+  const inMonth = weights.filter((w) => w.date >= from && w.date <= to);
+  return weightSeries(inMonth, "day", todayKey, 31);
 }

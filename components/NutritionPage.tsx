@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   WEEKDAY_SHORT,
   addDays,
+  addMonths,
   dayOfMonth,
+  endOfMonth,
   formatLongDate,
   formatMonthYear,
   formatShortDate,
@@ -19,6 +21,7 @@ import {
   hasLog,
   latestWeight,
   macroCalories,
+  weightDays,
   weightSeries,
   type WeightPeriod,
 } from "@/lib/nutrition";
@@ -29,7 +32,7 @@ import { PageHeader } from "./AppShell";
 import { Icon } from "./Icon";
 import { Modal } from "./Modal";
 import { Ring } from "./Ring";
-import { Button, Card, CardHead, Empty, Field, Input, Seg } from "./ui";
+import { Button, Card, CardHead, Empty, Field, IconButton, Input, Seg } from "./ui";
 
 /**
  * Nutrition: a week of days on top, the chosen day's calories and macros
@@ -358,13 +361,22 @@ const kg = (n: number) => KG.format(n);
 
 function WeightCard({ nutrition, today }: { nutrition: Nutrition; today: string }) {
   const [period, setPeriod] = useState<WeightPeriod>("week");
+  // The month the daily view shows; this one until the arrows move it.
+  const [month, setMonth] = useState(() => `${today.slice(0, 7)}-01`);
   const points = useMemo(
-    () => weightSeries(nutrition.weights, period, today),
-    [nutrition.weights, period, today],
+    () =>
+      period === "day"
+        ? weightDays(nutrition.weights, month, today)
+        : weightSeries(nutrition.weights, period, today),
+    [nutrition.weights, period, month, today],
   );
   const latest = latestWeight(nutrition.weights);
   const first = points[0];
-  const change = latest && first ? latest.value - first.value : 0;
+  // Over a past month the change is that month's; otherwise up to the latest.
+  const end = period === "day" ? points.at(-1) : latest;
+  const change = end && first ? end.value - first.value : 0;
+  const firstLog = nutrition.weights.map((w) => w.date).sort()[0];
+  const unitWord = period === "day" ? "days" : period === "week" ? "weeks" : "months";
 
   return (
     <Card aria-labelledby="weight-heading">
@@ -375,7 +387,7 @@ function WeightCard({ nutrition, today }: { nutrition: Nutrition; today: string 
           latest
             ? `${kg(latest.value)} kg · ${formatShortDate(latest.date)}${
                 points.length > 1
-                  ? ` · ${change > 0 ? "+" : change < 0 ? "−" : "±"}${kg(Math.abs(change))} kg over ${points.length} ${period === "week" ? "weeks" : "months"}`
+                  ? ` · ${change > 0 ? "+" : change < 0 ? "−" : "±"}${kg(Math.abs(change))} kg over ${points.length} ${unitWord}`
                   : ""
               }`
             : undefined
@@ -386,24 +398,54 @@ function WeightCard({ nutrition, today }: { nutrition: Nutrition; today: string 
             value={period}
             onChange={setPeriod}
             options={[
+              { value: "day", label: "Days" },
               { value: "week", label: "Weeks" },
               { value: "month", label: "Months" },
             ]}
           />
         }
       />
+      {period === "day" && (
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 sm:px-5">
+          <IconButton
+            name="chevronLeft"
+            label="Previous month"
+            disabled={!firstLog || month.slice(0, 7) <= firstLog.slice(0, 7)}
+            onClick={() => setMonth(addMonths(month, -1))}
+            className="disabled:opacity-30"
+          />
+          <span className="text-[12.5px] font-medium text-ink-2">{formatMonthYear(month)}</span>
+          <IconButton
+            name="chevronRight"
+            label="Next month"
+            disabled={month.slice(0, 7) >= today.slice(0, 7)}
+            onClick={() => setMonth(addMonths(month, 1))}
+            className="disabled:opacity-30"
+          />
+        </div>
+      )}
       {points.length === 0 ? (
-        <Empty>No weigh-ins yet. Log your weight and the last one of each week lands here.</Empty>
+        <Empty>
+          {period === "day"
+            ? "No weigh-ins this month."
+            : "No weigh-ins yet. Log your weight and the last one of each week lands here."}
+        </Empty>
       ) : (
         <LineChart
+          // Days sit on the calendar, so a skipped day leaves room in the line;
+          // weeks and months are evenly spaced readings.
+          span={period === "day" ? dayOfMonth(endOfMonth(month)) : undefined}
           points={points.map((p) => ({
             key: p.start,
             value: p.value,
+            at: period === "day" ? dayOfMonth(p.start) - 1 : undefined,
             tick:
-              period === "week"
-                ? formatShortDate(p.start)
-                : MONTH_SHORT.format(fromDateKey(p.start)),
-            current: p.current,
+              period === "day"
+                ? String(dayOfMonth(p.start))
+                : period === "week"
+                  ? formatShortDate(p.start)
+                  : MONTH_SHORT.format(fromDateKey(p.start)),
+            current: period === "day" ? p.start === today : p.current,
           }))}
         />
       )}
@@ -429,8 +471,11 @@ function useMeasuredWidth() {
 /** A small line chart, every point labelled — there are never more than twelve. */
 function LineChart({
   points,
+  span,
 }: {
-  points: Array<{ key: string; value: number; tick: string; current: boolean }>;
+  /** With `span`, each point's `at` places it on that many slots; otherwise points are evenly spaced. */
+  points: Array<{ key: string; value: number; tick: string; current: boolean; at?: number }>;
+  span?: number;
 }) {
   const [ref, width] = useMeasuredWidth();
   const height = 200;
@@ -445,12 +490,15 @@ function LineChart({
   }
   const plotW = Math.max(1, width - pad.left - pad.right);
   const plotH = height - pad.top - pad.bottom;
-  const x = (i: number) =>
-    points.length === 1 ? pad.left + plotW / 2 : pad.left + (i / (points.length - 1)) * plotW;
+  const x = (i: number) => {
+    const at = points[i]?.at;
+    if (span && at !== undefined) return pad.left + (span <= 1 ? 0.5 : at / (span - 1)) * plotW;
+    return points.length === 1 ? pad.left + plotW / 2 : pad.left + (i / (points.length - 1)) * plotW;
+  };
   const y = (v: number) => pad.top + (1 - (v - lo) / (hi - lo)) * plotH;
 
   // Thin the labels on a narrow screen so they never collide.
-  const every = width > 0 && width / points.length < 52 ? 2 : 1;
+  const every = width > 0 ? Math.max(1, Math.ceil(52 / (width / points.length))) : 1;
   const showTick = (i: number) => (points.length - 1 - i) % every === 0;
 
   return (

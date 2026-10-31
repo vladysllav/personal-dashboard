@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { addMonths, formatShortDate, monthKey } from "@/lib/dates";
-import { cadenceLabel, deriveHabitStats } from "@/lib/habits";
+import { formatShortDate, monthKey } from "@/lib/dates";
+import { cadenceLabel, deriveHabitStats, monthStats } from "@/lib/habits";
 import { swatch } from "@/lib/palette";
 import { useStore } from "@/lib/store";
 import type { Habit } from "@/lib/types";
@@ -22,22 +21,28 @@ import { Card, IconButton } from "./ui";
 export function HabitCard({
   habit,
   today,
+  month,
   onEdit,
   onDelete,
 }: {
   habit: Habit;
   today: string;
+  /** The month the page is reading — first day of it. */
+  month: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { dispatch } = useStore();
-  const [month, setMonth] = useState(() => monthKey(today));
   const stats = deriveHabitStats(habit, today);
   const { plan } = stats;
   const marks = new Set(habit.marks);
   const face = swatch(habit.color);
 
-  const percent = Math.round(stats.adherence * 100);
+  // Scored on the month alone, so the figure says how it is going now rather
+  // than averaging in every month since the habit began.
+  const monthly = monthStats([habit], month, today);
+  const percent = Math.round(monthly.adherence * 100);
+  const current = monthKey(month) === monthKey(today);
 
   return (
     <Card as="li" className="flex flex-col overflow-hidden">
@@ -78,10 +83,10 @@ export function HabitCard({
 
       {/* Three figures that cannot all flatter you at once: a raw count, the
           share of what was asked that landed, and where this week stands. */}
-      <dl className="grid grid-cols-3 gap-2 px-4 pt-4 sm:px-5">
-        <Stat value={String(stats.done)} label="Days kept" />
+      <dl className={`grid gap-2 px-4 pt-4 sm:px-5 ${current ? "grid-cols-3" : "grid-cols-2"}`}>
+        <Stat value={`${monthly.done}/${Math.round(monthly.total)}`} label="This month" />
         <Stat value={`${percent}%`} label="Of the plan" />
-        <Stat value={`${stats.weekMarks}/${stats.weekTarget}`} label="This week" />
+        {current && <Stat value={`${stats.weekMarks}/${stats.weekTarget}`} label="This week" />}
       </dl>
 
       <div className="px-4 py-4 sm:px-5">
@@ -94,7 +99,6 @@ export function HabitCard({
           onToggle={(day) =>
             dispatch({ type: "toggleHabit", habitId: habit.id, dateKey: day })
           }
-          onMonthChange={(delta) => setMonth((m) => monthKey(addMonths(m, delta)))}
         />
       </div>
     </Card>

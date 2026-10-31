@@ -482,44 +482,53 @@ export function deriveHabitStats(habit: Habit, todayKey: string): HabitStats {
 
 /* ---------- Cross-habit aggregates ---------- */
 
+/**
+ * What one day asked of one habit, read as it stood *on* that day.
+ *
+ * Later marks are hidden first, so last Tuesday is judged on what had happened
+ * by last Tuesday — a gym session on Friday cannot retroactively make Tuesday
+ * "already done for the week". A habit counts when it was due (or late) that
+ * day, or when it was marked anyway: a session you did on an optional day is
+ * still a session, and leaving it out would let a day read above 100%.
+ */
+export function dueOn(habit: Habit, day: string): { counts: boolean; done: boolean } {
+  if (day < habit.startDate) return { counts: false, done: false };
+  const asOf = { ...habit, marks: habit.marks.filter((m) => m <= day) };
+  const status = habitDay(asOf, day).status;
+  const done = status === "done";
+  return { counts: done || status === "due" || status === "overdue", done };
+}
+
 export type DayStat = {
   day: string;
   /** Habits marked on this day. */
   done: number;
-  /** Habits whose commitment covers this day at all. */
-  active: number;
-  /** `done / active`, 0–1. Zero when nothing was running. */
+  /** Habits this day asked for — due, late, or marked anyway. */
+  due: number;
+  /** `done / due`, 0–1. Zero when nothing was asked. */
   pct: number;
 };
 
 /**
- * Completion for each day in a range — the daily bar chart.
+ * Completion for each day in a range — the daily chart.
  *
- * The denominator is habits *running* that day, not habits that owed you that
- * day: a 4×/week habit has no opinion about which four. So a perfect week of
- * gym still shows gaps here, and that is the honest reading of "what share of
- * my habits did I do today". The weekly chart is where quotas are scored.
+ * The denominator is what each day actually asked for, not every habit you
+ * keep. With the gym already done three times this week and today not a
+ * shaving day, four of six habits are due, and three of them ticked is 75% —
+ * not 50% for failing to do things nobody asked of you.
  */
-export function dayStats(
-  habits: Habit[],
-  fromKey: string,
-  toKey: string,
-): DayStat[] {
-  const plans = habits.map((habit) => ({
-    plan: habitPlan(habit),
-    marks: new Set(habit.marks),
-  }));
-
+export function dayStats(habits: Habit[], fromKey: string, toKey: string): DayStat[] {
   const out: DayStat[] = [];
   for (let day = fromKey; day <= toKey; day = addDays(day, 1)) {
     let done = 0;
-    let active = 0;
-    for (const { plan, marks } of plans) {
-      if (!inPlan(plan, day)) continue;
-      active += 1;
-      if (marks.has(day)) done += 1;
+    let due = 0;
+    for (const habit of habits) {
+      const d = dueOn(habit, day);
+      if (!d.counts) continue;
+      due += 1;
+      if (d.done) done += 1;
     }
-    out.push({ day, done, active, pct: active === 0 ? 0 : done / active });
+    out.push({ day, done, due, pct: due === 0 ? 0 : done / due });
   }
   return out;
 }
@@ -535,126 +544,76 @@ export type WeekStat = {
   pct: number;
   /** The week containing today — still in progress. */
   current: boolean;
+  /** Not lived yet. */
+  future: boolean;
 };
 
 /**
- * Quota completion week by week — the weekly bar chart.
- *
- * The window ends on the week you are standing in — there is nothing to read
- * in a week that has not happened. The last bar is therefore always partial,
- * filling up as the week goes.
+ * Quota completion week by week, every week from `fromKey`'s to `toKey`'s.
  *
  * Unlike the daily view this scores cadence exactly: four gym sessions out of
  * four is 100%, whichever days they landed on.
  */
-export function weekStats(
+export function weekStatsBetween(
   habits: Habit[],
+  fromKey: string,
+  toKey: string,
   todayKey: string,
-  weeks: number,
 ): WeekStat[] {
   const plans = habits.map((habit) => ({
     plan: habitPlan(habit),
     marks: new Set(habit.marks),
   }));
   const thisWeek = startOfWeek(todayKey);
+  const out: WeekStat[] = [];
 
-  return Array.from({ length: weeks }, (_, i) => {
-    const weekStart = addDays(thisWeek, -(weeks - 1 - i) * 7);
+  for (let weekStart = startOfWeek(fromKey); weekStart <= toKey; weekStart = addDays(weekStart, 7)) {
     let done = 0;
     let target = 0;
-
     for (const { plan, marks } of plans) {
       // Only the days of this week the commitment actually covers count, so a
       // habit starting on Thursday is not judged on Monday to Wednesday.
-      let coveredDays = 0;
       for (let d = 0; d < 7; d += 1) {
         const day = addDays(weekStart, d);
         if (!inPlan(plan, day)) continue;
-        coveredDays += 1;
+        target += owedOn(plan, day);
         if (marks.has(day)) done += 1;
       }
-      if (coveredDays === 0) continue;
-      target += plan.perDay * coveredDays;
     }
-
-    return {
+    out.push({
       weekStart,
       done,
       target,
       pct: target <= 0 ? 0 : Math.min(1, done / target),
       current: weekStart === thisWeek,
-    };
-  });
-}
-
-/**
- * The last two *completed* weeks, for a week-over-week reading.
- *
- * Deliberately not "this week versus last": the week you are standing in is
- * half-lived, and comparing it to a finished one reports a collapse every
- * Monday morning. Both weeks here are closed, so the difference between them
- * is a real change in behaviour rather than an artefact of the calendar.
- *
- * Returns null until there are two closed weeks to compare.
- */
-export function weekOverWeek(
-  habits: Habit[],
-  todayKey: string,
-): { last: number; previous: number; delta: number } | null {
-  if (habits.length === 0) return null;
-  const weeks = weekStats(habits, todayKey, 3);
-  const last = weeks[1];
-  const previous = weeks[0];
-  if (!last || !previous || last.target <= 0 || previous.target <= 0) return null;
-  return {
-    last: last.pct,
-    previous: previous.pct,
-    delta: last.pct - previous.pct,
-  };
-}
-
-export type OverallStats = {
-  habits: number;
-  /** Habits this day actually asked for — the denominator of "marked today". */
-  dueToday: number;
-  markedToday: number;
-  /** Marks landed, across every habit, inside its own window. */
-  done: number;
-  /** Marks owed by today, across every habit. */
-  expected: number;
-  /** `done / expected`, 0–1 — the headline figure. */
-  adherence: number;
-};
-
-/**
- * The single number for the donut: of everything the plans asked of you so far,
- * how much landed. Adherence rather than a lifetime count, because a habit
- * started yesterday would otherwise drag the figure to nearly zero and say
- * nothing about how you are actually doing.
- */
-export function overallStats(habits: Habit[], todayKey: string): OverallStats {
-  let done = 0;
-  let expected = 0;
-  let markedToday = 0;
-  let dueToday = 0;
-
-  for (const habit of habits) {
-    const stats = deriveHabitStats(habit, todayKey);
-    done += stats.done;
-    expected += stats.expected;
-    if (stats.markedToday) markedToday += 1;
-    const status = habitDay(habit, todayKey).status;
-    if (status !== "off" && status !== "optional") dueToday += 1;
+      future: weekStart > todayKey,
+    });
   }
+  return out;
+}
 
-  return {
-    habits: habits.length,
-    dueToday,
-    markedToday,
-    done,
-    expected,
-    adherence: expected <= 0 ? 0 : Math.min(1, done / expected),
-  };
+/** The last `weeks` weeks, ending on the one containing `endKey`. */
+export function weekStats(
+  habits: Habit[],
+  endKey: string,
+  weeks: number,
+  todayKey: string = endKey,
+): WeekStat[] {
+  const last = startOfWeek(endKey);
+  return weekStatsBetween(habits, addDays(last, -(weeks - 1) * 7), last, todayKey);
+}
+
+/**
+ * Marks one plan asks of one day, fractional for quotas. Fixed weekdays are
+ * exact — a Mon/Thu habit owes a whole mark on Thursday and none on Friday —
+ * and a monthly quota is spread over that month's real length.
+ */
+function owedOn(plan: HabitPlan, day: string): number {
+  const f = plan.frequency;
+  if (f.unit === "day") return 1;
+  if (f.weekdays.length > 0) return f.weekdays.includes(isoWeekday(day)) ? 1 : 0;
+  if (f.unit === "week") return f.count / 7;
+  return f.count / Number(endOfMonth(day).slice(8, 10));
 }
 
 export type MonthStats = {
@@ -664,6 +623,8 @@ export type MonthStats = {
   done: number;
   /** Marks the plans asked for this month so far, fractional. */
   expected: number;
+  /** Marks the plans ask for across the whole month, today and after included. */
+  total: number;
   /** `done / expected`, 0–1. */
   adherence: number;
   /** The month still being lived. */
@@ -671,7 +632,7 @@ export type MonthStats = {
 };
 
 /**
- * The headline figure, scored one calendar month at a time.
+ * The headline figures, scored one calendar month at a time.
  *
  * A lifetime ratio stops moving after a few months: one good week barely
  * shifts it and one bad one barely dents it. Starting the count fresh on the
@@ -693,84 +654,30 @@ export function monthStats(
 
   let done = 0;
   let expected = 0;
+  let total = 0;
 
   for (const habit of habits) {
     const plan = habitPlan(habit);
-    const from = plan.startDate > monthStart ? plan.startDate : monthStart;
-    const to = monthEnd < todayKey ? monthEnd : todayKey;
-    if (from > to) continue;
-
     const marks = new Set(habit.marks);
-    let landed = 0;
-    for (const m of marks) if (m >= from && m <= to) landed += 1;
-    done += landed;
+    const from = plan.startDate > monthStart ? plan.startDate : monthStart;
 
-    // Closed days only: up to the month's end, or up to yesterday.
-    const closed = to === todayKey ? daysBetween(from, todayKey) : daysBetween(from, to) + 1;
-    expected += Math.max(0, closed) * plan.perDay;
-    if (to === todayKey && marks.has(todayKey)) expected += plan.perDay;
+    for (let day = from; day <= monthEnd; day = addDays(day, 1)) {
+      const owed = owedOn(plan, day);
+      total += owed;
+      if (day > todayKey) continue;
+      const marked = marks.has(day);
+      if (marked) done += 1;
+      // Closed days only, plus today once it has been marked.
+      if (day < todayKey || marked) expected += owed;
+    }
   }
 
   return {
     month,
     done,
     expected,
+    total,
     adherence: expected <= 0 ? (done > 0 ? 1 : 0) : Math.min(1, done / expected),
     current,
   };
-}
-
-/**
- * The whole-board streak. A day counts when at least half the habits running
- * that day were marked — the "did I show up" line. Today gets the same grace a
- * single habit gets: an as-yet-incomplete today is skipped, not counted a break.
- */
-export function overallStreaks(
-  habits: Habit[],
-  todayKey: string,
-): { current: number; longest: number } {
-  if (habits.length === 0) return { current: 0, longest: 0 };
-
-  const plans = habits.map((habit) => ({
-    plan: habitPlan(habit),
-    marks: new Set(habit.marks),
-  }));
-
-  const good = (day: string): boolean => {
-    let done = 0;
-    let active = 0;
-    for (const { plan, marks } of plans) {
-      if (!inPlan(plan, day)) continue;
-      active += 1;
-      if (marks.has(day)) done += 1;
-    }
-    return active > 0 && done >= Math.ceil(active / 2);
-  };
-
-  let cursor = good(todayKey) ? todayKey : addDays(todayKey, -1);
-  let current = 0;
-  while (good(cursor)) {
-    current += 1;
-    cursor = addDays(cursor, -1);
-  }
-
-  const first = habits
-    .map((habit) => habit.startDate)
-    .sort()
-    .at(0);
-
-  let longest = 0;
-  if (first) {
-    let run = 0;
-    for (let day = first; day <= todayKey; day = addDays(day, 1)) {
-      if (good(day)) {
-        run += 1;
-        if (run > longest) longest = run;
-      } else {
-        run = 0;
-      }
-    }
-  }
-
-  return { current, longest };
 }

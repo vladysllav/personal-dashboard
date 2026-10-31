@@ -42,7 +42,8 @@ export function HabitCalendar({
   plan: HabitPlan;
   today: string;
   onToggle: (day: string) => void;
-  onMonthChange: (delta: number) => void;
+  /** Omit when the month is driven from outside — the arrows are then hidden. */
+  onMonthChange?: (delta: number) => void;
 }) {
   const cells = monthGrid(month);
   const mk = monthKey(month);
@@ -50,30 +51,36 @@ export function HabitCalendar({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between gap-1">
-        <button
-          type="button"
-          onClick={() => onMonthChange(-1)}
-          aria-label={`${name}: previous month`}
-          className="rounded-[8px] p-1 text-ink-3 hover:bg-surface-3 hover:text-ink"
-        >
-          <Icon name="chevronLeft" size={16} />
-        </button>
-        <h4 className="text-[12.5px] font-medium text-ink-2">
+      {!onMonthChange ? (
+        <h4 className="text-center text-[12.5px] font-medium text-ink-2">
           {formatMonthYear(mk)}
         </h4>
-        <button
-          type="button"
-          onClick={() => onMonthChange(1)}
-          // There is nothing to mark ahead of today, so the forward arrow stops
-          // at the current month instead of walking into empty grids.
-          disabled={atCurrentMonth}
-          aria-label={`${name}: next month`}
-          className="rounded-[8px] p-1 text-ink-3 hover:bg-surface-3 hover:text-ink disabled:cursor-not-allowed disabled:text-line-strong disabled:hover:bg-transparent"
-        >
-          <Icon name="chevronRight" size={16} />
-        </button>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between gap-1">
+          <button
+            type="button"
+            onClick={() => onMonthChange(-1)}
+            aria-label={`${name}: previous month`}
+            className="rounded-[8px] p-1 text-ink-3 hover:bg-surface-3 hover:text-ink"
+          >
+            <Icon name="chevronLeft" size={16} />
+          </button>
+          <h4 className="text-[12.5px] font-medium text-ink-2">
+            {formatMonthYear(mk)}
+          </h4>
+          <button
+            type="button"
+            onClick={() => onMonthChange(1)}
+            // There is nothing to mark ahead of today, so the forward arrow stops
+            // at the current month instead of walking into empty grids.
+            disabled={atCurrentMonth}
+            aria-label={`${name}: next month`}
+            className="rounded-[8px] p-1 text-ink-3 hover:bg-surface-3 hover:text-ink disabled:cursor-not-allowed disabled:text-line-strong disabled:hover:bg-transparent"
+          >
+            <Icon name="chevronRight" size={16} />
+          </button>
+        </div>
+      )}
 
       <div
         aria-hidden="true"
